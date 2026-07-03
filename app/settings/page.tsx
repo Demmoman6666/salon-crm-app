@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import ShopifyImport from "@/components/ShopifyImport";
+import InstallAppButton from "@/components/InstallAppButton";
 import { useSearchParams } from "next/navigation";
 
 type Me = {
@@ -304,6 +305,7 @@ function SettingsInner() {
 
       {/* ---- Account ---- */}
       {tab === "account" && (
+        <>
         <section className="card grid" style={{ gap: 12 }}>
           <div className="grid grid-2" style={{ gap: 12 }}>
             <div className="field"><label>Full Name</label><input value={fullName} onChange={(e) => setFullName(e.target.value)} /></div>
@@ -333,6 +335,8 @@ function SettingsInner() {
             </button>
           </div>
         </section>
+        <InstallAppButton />
+        </>
       )}
 
       {/* ---- Sales Reps ---- */}
