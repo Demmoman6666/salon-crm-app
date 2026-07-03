@@ -10,7 +10,7 @@ export default function ProfitCalculatorPage() {
     <div className="grid" style={{ gap: 16 }}>
       <section className="card">
         <div className="row" style={{ justifyContent: "space-between", alignItems: "baseline" }}>
-          <h1>Salon Retail Profit Calculator</h1>
+          <h1>Retail Profit Calculator</h1>
           <Link href="/saleshub" className="small">
             ← Back to Sales Hub
           </Link>
