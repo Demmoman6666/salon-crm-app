@@ -26,11 +26,6 @@ export default async function Home() {
           <div className="action-title">Reporting</div>
           <div className="action-sub">Call &amp; customer reporting</div>
         </Link>
-
-        <Link href="/education" className="action-tile">
-          <div className="action-title">Education</div>
-          <div className="action-sub">Requests, bookings &amp; educators</div>
-        </Link>
       </section>
     </div>
   );

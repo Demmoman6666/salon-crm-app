@@ -45,11 +45,6 @@ export default function SalesHubPage() {
           <div className="action-sub">Funnel view &amp; conversion rates</div>
         </Link>
 
-        <Link href="/saleshub/route-plan" className="action-tile">
-          <div className="action-title">Route Plan</div>
-          <div className="action-sub">4-week cycle planner with AI briefs</div>
-        </Link>
-
         {/* Calendar */}
         <Link href="/saleshub/calendar" className="action-tile">
           <div className="action-title">Calendar</div>
@@ -60,12 +55,6 @@ export default function SalesHubPage() {
         <Link href="/saleshub/coverage-map" className="action-tile">
           <div className="action-title">Coverage Map</div>
           <div className="action-sub">Filter by rep &amp; view pins</div>
-        </Link>
-
-        {/* Education (moved from Home) */}
-        <Link href="/education" className="action-tile">
-          <div className="action-title">Education</div>
-          <div className="action-sub">Training, resources &amp; events</div>
         </Link>
       </section>
     </div>
