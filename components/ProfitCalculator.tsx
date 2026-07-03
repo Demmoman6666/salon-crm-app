@@ -101,10 +101,13 @@ export default function ProfitCalculator() {
     setRrpEdited(false);
   }, [selectedProduct]);
 
-  // derive RRP from cost + margin (unless the user has manually edited RRP)
+  // derive RRP from cost + margin-on-sale (unless the user has manually edited RRP)
+  // Margin here is % of the SELLING price, so: RRP = Cost / (1 - margin%)
   useEffect(() => {
     if (rrpEdited) return;
-    const derived = (Number(cost) || 0) * (1 + (Number(margin) || 0) / 100);
+    const m = (Number(margin) || 0) / 100;
+    // guard against 100%+ margin (division by zero / negative)
+    const derived = m >= 1 ? 0 : (Number(cost) || 0) / (1 - m);
     setRrp(Number(derived.toFixed(2)));
   }, [cost, margin, rrpEdited]);
 
@@ -203,7 +206,8 @@ export default function ProfitCalculator() {
           </div>
 
           <p className="small muted" style={{ marginTop: 8 }}>
-            Cost is pulled from the Shopify price. RRP auto-calculates from your margin — or type your own.
+            Cost is pulled from the Shopify price. Margin is a percentage of the sale price
+            (50% means cost is half the RRP). RRP auto-calculates — or type your own.
           </p>
           <p className="small" style={{ marginTop: 4 }}>
             Profit (per unit): <b>{fmtMoney(unitProfit)}</b>
