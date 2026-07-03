@@ -18,7 +18,7 @@ export async function POST(req: Request) {
 
     const upserted = await prisma.customerProductPar.upsert({
       where: { customerId_sku: { customerId, sku } }, // from @@unique([customerId, sku])
-      create: { customerId, sku, parQty },
+      create: { companyId: t.companyId, customerId, sku, parQty },
       update: { parQty },
     });
 

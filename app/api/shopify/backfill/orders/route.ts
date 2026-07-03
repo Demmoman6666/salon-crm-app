@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   const json = await res.json();
 
   for (const o of json.orders || []) {
-    await upsertOrderFromShopify(t.companyId, o, process.env.SHOPIFY_SHOP_DOMAIN!);
+    await upsertOrderFromShopify(t.companyId, o);
   }
 
   const link = res.headers.get("link") || "";

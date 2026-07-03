@@ -83,7 +83,7 @@ export async function GET(req: Request) {
           };
         }>;
       };
-    }>(query, { q: qString(term), first });
+    }>(t.companyId, query, { q: qString(term), first });
 
     const products = (data?.products?.edges || []).map((pe) => {
       const p = pe.node;

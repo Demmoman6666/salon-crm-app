@@ -27,7 +27,7 @@ function getOrigin(req: Request): string {
 }
 
 // Admin GraphQL price lookup (ex-VAT)
-async function fetchVariantPricing(variantIds: string[]) {
+async function fetchVariantPricing(companyId: string, variantIds: string[]) {
   if (!variantIds.length) return {};
   const ids = variantIds.map((id) => `gid://shopify/ProductVariant/${id}`);
 
@@ -54,7 +54,7 @@ async function fetchVariantPricing(variantIds: string[]) {
         }
       | null
     >;
-  }>(query, { ids });
+  }>(companyId, query, { ids });
 
   const out: Record<string, { productTitle: string; variantTitle: string; priceExVat: number }> = {};
   for (const n of data.nodes || []) {
@@ -181,7 +181,7 @@ export async function POST(req: Request) {
     }
 
     // --- Build Stripe Payment Link (VAT inclusive prices) ---
-    const catalog = await fetchVariantPricing(lines.map((l) => String(l.variantId)));
+    const catalog = await fetchVariantPricing(t.companyId, lines.map((l) => String(l.variantId)));
     const items = await Promise.all(
       lines.map(async (li) => {
         const v = catalog[String(li.variantId)];

@@ -92,9 +92,9 @@ export async function POST(req: Request) {
   for (const ord of orders) {
     try {
       if (ord.customer) {
-        await upsertCustomerFromShopify(t.companyId, ord.customer, ord?.shop_domain || "");
+        await upsertCustomerFromShopify(t.companyId, ord.customer);
       }
-      await upsertOrderFromShopify(t.companyId, ord, ord?.shop_domain || "");
+      await upsertOrderFromShopify(t.companyId, ord);
       imported++;
     } catch (e: any) {
       console.error("[backfill-all-orders] upsert failed:", e?.message || e);

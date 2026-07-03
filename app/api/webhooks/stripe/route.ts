@@ -137,6 +137,8 @@ async function createPaidShopifyOrderFromSession(session: Stripe.Checkout.Sessio
  *  - Disable Stripe Payment Link
  */
 async function completeDraftAndMarkPaid(session: Stripe.Checkout.Session) {
+  const companyId = String(session.metadata?.companyId || "");
+  if (!companyId) throw new Error("Missing companyId in session metadata");
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2023-10-16" });
 
   let draftId: string | null = (session.metadata?.crmDraftOrderId as string) || null;
@@ -208,6 +210,7 @@ async function completeDraftAndMarkPaid(session: Stripe.Checkout.Session) {
       userErrors: Array<{ field?: string[]; message: string }>;
     };
   }>(
+    companyId,
     `
     mutation MarkPaid($input: OrderMarkAsPaidInput!) {
       orderMarkAsPaid(input: $input) {

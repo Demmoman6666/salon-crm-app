@@ -25,7 +25,7 @@ function getOrigin(req: Request): string {
 }
 
 /** Trusted price lookup direct from Shopify Admin GraphQL — returns ex-VAT */
-async function fetchVariantPricing(variantIds: string[]) {
+async function fetchVariantPricing(companyId: string, variantIds: string[]) {
   if (!variantIds.length) return {};
   const gids = variantIds.map((id) => `gid://shopify/ProductVariant/${id}`);
 
@@ -53,7 +53,7 @@ async function fetchVariantPricing(variantIds: string[]) {
         }
       | null
     >;
-  }>(query, { ids: gids });
+  }>(companyId, query, { ids: gids });
 
   const out: Record<string, { productTitle: string; variantTitle: string; priceExVat: number }> = {};
   for (const node of data.nodes || []) {
@@ -71,8 +71,8 @@ async function fetchVariantPricing(variantIds: string[]) {
 }
 
 /** Fetch a Shopify draft order (REST) */
-async function loadDraft(draftId: string | number) {
-  const res = await shopifyRest(t.companyId, `/draft_orders/${draftId}.json`, { method: "GET" });
+async function loadDraft(companyId: string, draftId: string | number) {
+  const res = await shopifyRest(companyId, `/draft_orders/${draftId}.json`, { method: "GET" });
   const text = await res.text().catch(() => "");
   if (!res.ok) throw new Error(`Failed to fetch draft: ${res.status} ${text}`);
   const json = JSON.parse(text);
@@ -80,13 +80,13 @@ async function loadDraft(draftId: string | number) {
 }
 
 /** Create a Checkout Session *from an existing draft* (preferred flow) */
-async function createCheckoutFromDraft(req: Request, draftId: string | number) {
+async function createCheckoutFromDraft(companyId: string, req: Request, draftId: string | number) {
   const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
   if (!stripeSecret) return NextResponse.json({ error: "Missing STRIPE_SECRET_KEY env var" }, { status: 500 });
   const stripe = new Stripe(stripeSecret, { apiVersion: "2023-10-16" });
 
   const origin = getOrigin(req);
-  const draft = await loadDraft(draftId);
+  const draft = await loadDraft(companyId, draftId);
 
   const items = draft?.line_items || [];
   if (!Array.isArray(items) || items.length === 0) {
@@ -102,7 +102,7 @@ async function createCheckoutFromDraft(req: Request, draftId: string | number) {
       product_data: {
         name: `${li?.title ?? "Item"}${li?.variant_title ? ` — ${li.variant_title}` : ""}`,
         metadata: {
-        companyId: t.companyId,
+        companyId: companyId,
           variantId: li?.variant_id ? String(li.variant_id) : "",
           crmDraftOrderId: String(draftId),
         },
@@ -141,7 +141,7 @@ export async function GET(req: Request) {
   const draftId = url.searchParams.get("draftId");
   if (!draftId) return NextResponse.json({ error: "Missing draftId" }, { status: 400 });
   try {
-    return await createCheckoutFromDraft(req, draftId);
+    return await createCheckoutFromDraft(t.companyId, req, draftId);
   } catch (err: any) {
     console.error("Stripe checkout (GET) error:", err);
     return NextResponse.json({ error: err?.message || "Stripe checkout failed" }, { status: 500 });
@@ -166,7 +166,7 @@ export async function POST(req: Request) {
 
     // --- (A) Preferred: draft-backed checkout --------------------------------
     if ("draftId" in body && body.draftId) {
-      return await createCheckoutFromDraft(req, String(body.draftId));
+      return await createCheckoutFromDraft(t.companyId, req, String(body.draftId));
     }
 
     // --- (B) Legacy: direct lines --------------------------------------------
@@ -191,7 +191,7 @@ export async function POST(req: Request) {
 
     // Secure prices from Shopify (ex VAT)
     const ids = lines.map((l) => String(l.variantId));
-    const catalog = await fetchVariantPricing(ids);
+    const catalog = await fetchVariantPricing(companyId, ids);
 
     // Build Stripe Checkout line items (gross, inc VAT), and attach variantId to product metadata
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = lines.map((li) => {
@@ -207,7 +207,7 @@ export async function POST(req: Request) {
           product_data: {
             name: `${v.productTitle} — ${v.variantTitle}`,
             metadata: {
-        companyId: t.companyId, variantId: String(li.variantId) },
+        companyId: companyId, variantId: String(li.variantId) },
           },
         },
       };

@@ -94,7 +94,8 @@ export async function POST(req: Request) {
   // Upsert on unique key
   const target = await prisma.target.upsert({
     where: {
-      scope_metric_periodStart_periodEnd_repId_vendorId: {
+      companyId_scope_metric_periodStart_periodEnd_repId_vendorId: {
+        companyId: t.companyId,
         scope,
         metric,
         periodStart,
@@ -109,6 +110,7 @@ export async function POST(req: Request) {
       notes: body.notes ? String(body.notes) : null,
     },
     create: {
+      companyId: t.companyId,
       scope,
       metric,
       periodStart,

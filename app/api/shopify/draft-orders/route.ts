@@ -52,12 +52,16 @@ function gid(kind: "ProductVariant" | "Customer" | "DraftOrder" | "PaymentTermsT
   return `gid://shopify/${kind}/${String(id)}`;
 }
 
-async function shopifyGraphQL<T = any>(query: string, variables?: Record<string, any>) {
-  const shop = (process.env.SHOPIFY_SHOP_DOMAIN || "").replace(/^https?:\/\//, "").replace(/\/$/, "");
-  const token = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN || process.env.SHOPIFY_ACCESS_TOKEN || "";
-  const apiVer = process.env.SHOPIFY_API_VERSION || "2025-07";
+async function shopifyGraphQL<T = any>(companyId: string, query: string, variables?: Record<string, any>) {
+  const company = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { shopDomain: true, shopifyAccessToken: true },
+  });
+  const shop = (company?.shopDomain || "").replace(/^https?:\/\//, "").replace(/\/$/, "");
+  const token = company?.shopifyAccessToken || "";
+  const apiVer = process.env.SHOPIFY_API_VERSION || "2025-01";
 
-  if (!shop || !token) throw new Error("Missing SHOPIFY_SHOP_DOMAIN or SHOPIFY_ADMIN_ACCESS_TOKEN.");
+  if (!shop || !token) throw new Error("Shopify is not connected for this company.");
 
   const resp = await fetch(`https://${shop}/admin/api/${apiVer}/graphql.json`, {
     method: "POST",
@@ -74,7 +78,7 @@ async function shopifyGraphQL<T = any>(query: string, variables?: Record<string,
   return { ok: resp.ok, status: resp.status, text, json };
 }
 
-async function fetchTermsTemplates(): Promise<Array<{ id: string; name: string; paymentTermsType: string; dueInDays: number | null }>> {
+async function fetchTermsTemplates(companyId: string): Promise<Array<{ id: string; name: string; paymentTermsType: string; dueInDays: number | null }>> {
   const q = `
     query Templates {
       paymentTermsTemplates {
@@ -85,7 +89,7 @@ async function fetchTermsTemplates(): Promise<Array<{ id: string; name: string; 
       }
     }
   `;
-  const { ok, json, status, text } = await shopifyGraphQL(t.companyId, q);
+  const { ok, json, status, text } = await shopifyGraphQL(companyId, q);
   if (!ok || json?.errors) {
     throw new Error(`Failed to fetch paymentTermsTemplates (${status}): ${json?.errors?.[0]?.message || text}`);
   }
@@ -171,7 +175,7 @@ export async function POST(req: Request) {
     if (applyPaymentTerms && savedPaymentDueLater && savedPaymentTermsName) {
       const want = canonicalName(savedPaymentTermsName, savedPaymentTermsDueInDays);
       if (want) {
-        const templates = await fetchTermsTemplates();
+        const templates = await fetchTermsTemplates(t.companyId);
         const tpl =
           templates.find((t) => t.name === want) ||
           (want === "Fixed" ? templates.find((t) => /^Fixed/i.test(t.name)) : null);

@@ -10,11 +10,11 @@ function sleep(ms: number) { return new Promise(r => setTimeout(r, ms)); }
 // Cache to avoid re-fetching the same product many times
 const vendorCache = new Map<string, string | null>();
 
-async function fetchProductVendor(productId: string): Promise<string | null> {
+async function fetchProductVendor(companyId: string, productId: string): Promise<string | null> {
   if (!productId) return null;
   if (vendorCache.has(productId)) return vendorCache.get(productId)!;
   try {
-    const res = await shopifyRest(t.companyId, `/products/${productId}.json`, { method: "GET" });
+    const res = await shopifyRest(companyId, `/products/${productId}.json`, { method: "GET" });
     if (!res.ok) { vendorCache.set(productId, null); return null; }
     const json = await res.json();
     const v = (json?.product?.vendor || "").toString().trim() || null;
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     const pid = g.productId as string | null;
     if (!pid) { skipped++; continue; }
 
-    const vendor = await fetchProductVendor(pid);
+    const vendor = await fetchProductVendor(t.companyId, pid);
     lookedUp++;
 
     if (vendor) {

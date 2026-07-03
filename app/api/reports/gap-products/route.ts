@@ -14,7 +14,7 @@ type Product = {
   variants: Array<{ id: number; title: string | null; sku: string | null }>;
 };
 
-async function fetchShopifyProductsByVendor(vendor: string): Promise<Product[]> {
+async function fetchShopifyProductsByVendor(companyId: string, vendor: string): Promise<Product[]> {
   const out: Product[] = [];
   let pageInfo: string | null = null;
 
@@ -25,7 +25,7 @@ async function fetchShopifyProductsByVendor(vendor: string): Promise<Product[]> 
       : new URLSearchParams({ vendor, limit: "250", fields: "id,title,vendor,variants", status: "active" });
     const url = `/products.json?${qs.toString()}`;
 
-    const r = await shopifyRest(t.companyId, url, { method: "GET" });
+    const r = await shopifyRest(companyId, url, { method: "GET" });
     if (!r.ok) {
       const t = await r.text().catch(() => "");
       throw new Error(`Shopify products fetch failed: ${r.status} ${t}`);
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     const customerIds: string[] = Array.isArray(body?.customerIds) ? body.customerIds.map(String) : [];
 
     // 1) Full brand catalog so we can show “never purchased”
-    const products = await fetchShopifyProductsByVendor(vendor);
+    const products = await fetchShopifyProductsByVendor(t.companyId, vendor);
     const productIndex = new Map<number, { title: string; sku?: string | null }>();
     for (const p of products) {
       productIndex.set(p.id, { title: p.title, sku: p.variants?.[0]?.sku ?? null });

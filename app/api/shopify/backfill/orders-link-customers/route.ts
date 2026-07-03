@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       }
 
       // Ensure a CRM customer exists/updated for this Shopify customer
-      await upsertCustomerFromShopify(t.companyId, sCust, ""); // shop domain unused in your impl
+      await upsertCustomerFromShopify(t.companyId, sCust); // shop domain unused in your impl
 
       // Find the CRM customer
       const crmCust = await prisma.customer.findFirst({

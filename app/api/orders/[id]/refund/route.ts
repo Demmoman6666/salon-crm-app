@@ -291,7 +291,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
           }
 
           // success via Stripe path
-          await refreshCrmFromShopify(shopifyOrderId);
+          await refreshCrmFromShopify(t.companyId, shopifyOrderId);
           if (debug) return NextResponse.json({ ok: true, mode: "stripe", debug: debugOut }, { status: 200 });
 
           const back1 = new URL(req.url);
@@ -333,7 +333,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       return NextResponse.json({ error: `Shopify refund create failed: ${createCredit.status} ${createCreditTxt}` }, { status: 502 });
     }
 
-    await refreshCrmFromShopify(shopifyOrderId);
+    await refreshCrmFromShopify(t.companyId, shopifyOrderId);
     if (debug) return NextResponse.json({ ok: true, mode: "credit-note", debug: debugOut }, { status: 200 });
 
     const back = new URL(req.url);
@@ -347,12 +347,12 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   }
 }
 
-async function refreshCrmFromShopify(shopifyOrderId: number | string) {
+async function refreshCrmFromShopify(companyId: string, shopifyOrderId: number | string) {
   try {
-    const freshOrderRes = await shopifyRest(t.companyId, `/orders/${shopifyOrderId}.json`, { method: "GET" });
+    const freshOrderRes = await shopifyRest(companyId, `/orders/${shopifyOrderId}.json`, { method: "GET" });
     if (freshOrderRes.ok) {
       const fresh = await freshOrderRes.json();
-      if (fresh?.order) await upsertOrderFromShopify(t.companyId, fresh.order, "");
+      if (fresh?.order) await upsertOrderFromShopify(companyId, fresh.order);
     }
   } catch {
     /* ignore */

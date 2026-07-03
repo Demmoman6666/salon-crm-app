@@ -20,7 +20,7 @@ export async function POST(req: Request) {
   const json = await res.json();
 
   for (const c of json.customers || []) {
-    await upsertCustomerFromShopify(t.companyId, c, process.env.SHOPIFY_SHOP_DOMAIN!);
+    await upsertCustomerFromShopify(t.companyId, c);
   }
 
   // Relay pagination cursor (Link header)

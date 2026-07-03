@@ -15,7 +15,7 @@ function nextPageInfo(linkHeader?: string | null) {
   return url.searchParams.get("page_info");
 }
 
-async function fetchAll(pathBase: "/custom_collections.json" | "/smart_collections.json") {
+async function fetchAll(companyId: string, pathBase: "/custom_collections.json" | "/smart_collections.json") {
   const out: any[] = [];
   let pageInfo: string | null = null;
   let pages = 0;
@@ -24,7 +24,7 @@ async function fetchAll(pathBase: "/custom_collections.json" | "/smart_collectio
     const path = pageInfo
       ? `${pathBase}?${new URLSearchParams({ limit: "250", page_info: pageInfo }).toString()}`
       : `${pathBase}?${new URLSearchParams({ limit: "250" }).toString()}`;
-    const res = await shopifyRest(t.companyId, path, { method: "GET" });
+    const res = await shopifyRest(companyId, path, { method: "GET" });
     if (!res.ok) throw new Error(`Shopify ${pathBase} failed: ${res.status}`);
     const json = await res.json();
     out.push(...(json?.custom_collections ?? json?.smart_collections ?? []));
@@ -40,8 +40,8 @@ export async function GET() {
   try {
     requireShopifyEnv();
     const [customs, smarts] = await Promise.all([
-      fetchAll("/custom_collections.json"),
-      fetchAll("/smart_collections.json"),
+      fetchAll(t.companyId, "/custom_collections.json"),
+      fetchAll(t.companyId, "/smart_collections.json"),
     ]);
 
     const map = new Map<string, { id: string; name: string; handle?: string }>();

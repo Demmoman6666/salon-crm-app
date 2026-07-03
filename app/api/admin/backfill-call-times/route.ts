@@ -7,9 +7,9 @@ import { prisma } from "@/lib/prisma";
 // One-time backfill: recompute durationMinutes (if missing) from start/end,
 // and normalize appointmentBooked from outcome/callType/stage.
 // NOTE: we cannot reconstruct startTime/endTime for old rows that never saved them.
-async function runBackfill() {
+async function runBackfill(companyId: string) {
   const rows = await prisma.callLog.findMany({
-    where: { companyId: t.companyId,
+    where: { companyId,
       OR: [
         { durationMinutes: null },
         { appointmentBooked: null },
@@ -62,7 +62,7 @@ async function runBackfill() {
 // POST (for your console fetch)
 export async function POST() {
   const t = await requireTenant();
-  const result = await runBackfill();
+  const result = await runBackfill(t.companyId);
   return NextResponse.json(result);
 }
 
@@ -76,6 +76,6 @@ export async function GET(req: Request) {
       { status: 400 }
     );
   }
-  const result = await runBackfill();
+  const result = await runBackfill(t.companyId);
   return NextResponse.json(result);
 }

@@ -251,8 +251,8 @@ export async function GET(req: Request) {
             const unitCostNum = Number(entry.unitCost);
             if (!Number.isFinite(unitCostNum)) continue;
             await prisma.shopifyVariantCost.upsert({
-              where: { variantId },
-              create: { variantId, unitCost: unitCostNum, currency: entry.currency || "GBP" },
+              where: { companyId_variantId: { companyId: t.companyId, variantId } },
+              create: { companyId: t.companyId, variantId, unitCost: unitCostNum, currency: entry.currency || "GBP" },
               update: { unitCost: unitCostNum, currency: entry.currency || "GBP" },
             });
             costMap.set(variantId, unitCostNum);

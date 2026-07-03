@@ -31,7 +31,7 @@ function poundsToPence(n: number) {
 
 async function resolvePaymentIntentId(
   stripe: Stripe,
-  input: { paymentIntentId?: string | null; sessionId?: string | null; shopifyOrderId?: string | null }
+  input: { companyId: string; paymentIntentId?: string | null; sessionId?: string | null; shopifyOrderId?: string | null }
 ): Promise<string> {
   // 1) Direct
   if (input.paymentIntentId) return input.paymentIntentId;
@@ -46,7 +46,7 @@ async function resolvePaymentIntentId(
 
   // 3) From Shopify note_attributes on the order
   if (input.shopifyOrderId) {
-    const res = await shopifyRest(t.companyId, `/orders/${input.shopifyOrderId}.json`, { method: "GET" });
+    const res = await shopifyRest(input.companyId, `/orders/${input.shopifyOrderId}.json`, { method: "GET" });
     const json = await res.json().catch(() => ({}));
     const attrs: Array<{ name?: string; value?: string }> = json?.order?.note_attributes || [];
     const hit =
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     }
 
     // Resolve PI
-    const paymentIntentId = await resolvePaymentIntentId(stripe, {
+    const paymentIntentId = await resolvePaymentIntentId(stripe, { companyId: t.companyId,
       paymentIntentId: body.paymentIntentId || null,
       sessionId: body.sessionId || null,
       shopifyOrderId: body.shopifyOrderId || null,

@@ -223,7 +223,7 @@ export async function POST(req: Request) {
   const names = Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
   if (names.length) {
     await prisma.stockedBrand.createMany({
-      data: names.map((name) => ({ name })),
+      data: names.map((name) => ({ companyId: t.companyId, name })),
       skipDuplicates: true,
     });
   }
