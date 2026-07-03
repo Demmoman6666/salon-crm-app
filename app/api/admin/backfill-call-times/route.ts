@@ -1,5 +1,6 @@
 export const dynamic = "force-dynamic";
 
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -8,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 // NOTE: we cannot reconstruct startTime/endTime for old rows that never saved them.
 async function runBackfill() {
   const rows = await prisma.callLog.findMany({
-    where: {
+    where: { companyId: t.companyId,
       OR: [
         { durationMinutes: null },
         { appointmentBooked: null },
@@ -60,12 +61,14 @@ async function runBackfill() {
 
 // POST (for your console fetch)
 export async function POST() {
+  const t = await requireTenant();
   const result = await runBackfill();
   return NextResponse.json(result);
 }
 
 // Optional: GET ?run=1 so you can run it by visiting the URL
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   if (searchParams.get("run") !== "1") {
     return NextResponse.json(

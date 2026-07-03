@@ -1,7 +1,9 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const customerId = searchParams.get('customerId') ?? undefined;
 

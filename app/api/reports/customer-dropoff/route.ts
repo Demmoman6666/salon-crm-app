@@ -1,4 +1,5 @@
 // app/api/reports/customer-dropoff/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -34,6 +35,7 @@ function ymd(d?: Date | string | null): string {
 
 /* ---------- GET /api/reports/customer-dropoff ---------- */
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
 
   // days threshold: 7 / 14 / 21 / 28 / custom

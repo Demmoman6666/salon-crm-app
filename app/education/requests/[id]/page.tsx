@@ -1,4 +1,5 @@
 // app/education/requests/[id]/page.tsx
+import { requireTenant } from "@/lib/tenant";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
@@ -168,8 +169,10 @@ export default async function EducationRequestReviewPage({
     // Create booking using ONLY fields that exist on your model.
     // (We do not write brands/educationTypes here to avoid schema mismatches;
     // you can always read them via req relation.)
+    const t = await requireTenant();
     await prisma.educationBooking.create({
       data: {
+        companyId: t.companyId,
         requestId: req.id,
         customerId: req.customerId,
         educatorId: educatorId || null,

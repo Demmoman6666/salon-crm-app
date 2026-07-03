@@ -1,4 +1,5 @@
 // app/api/reps/[id]/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -6,15 +7,16 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const t = await requireTenant();
   try {
     const rep = await prisma.salesRep.findUnique({ where: { id: params.id } });
     if (!rep) return NextResponse.json({ error: "Rep not found" }, { status: 404 });
 
     const [totalCustomers, customersByStage, recentCustomers] = await Promise.all([
-      prisma.customer.count({ where: { salesRepId: rep.id } }),
+      prisma.customer.count({ where: { companyId: t.companyId, salesRepId: rep.id } }),
       prisma.customer.groupBy({ by: ["stage"], where: { salesRepId: rep.id }, _count: { _all: true } }),
       prisma.customer.findMany({
-        where: { salesRepId: rep.id },
+        where: { companyId: t.companyId, salesRepId: rep.id },
         select: { id: true, salonName: true, town: true, stage: true, updatedAt: true },
         orderBy: { updatedAt: "desc" },
         take: 10,
@@ -26,7 +28,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
     const [recentCalls, totalCalls] = await Promise.all([
       prisma.callLog.findMany({
-        where: {
+        where: { companyId: t.companyId,
           OR: [{ repId: rep.id }, { staff: { equals: rep.name, mode: "insensitive" } }],
           createdAt: { gte: thirtyDaysAgo },
         },
@@ -39,12 +41,12 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
         take: 10,
       }),
       prisma.callLog.count({
-        where: { OR: [{ repId: rep.id }, { staff: { equals: rep.name, mode: "insensitive" } }] },
+        where: { companyId: t.companyId, OR: [{ repId: rep.id }, { staff: { equals: rep.name, mode: "insensitive" } }] },
       }),
     ]);
 
     const pendingFollowUps = await prisma.callLog.count({
-      where: {
+      where: { companyId: t.companyId,
         OR: [{ repId: rep.id }, { staff: { equals: rep.name, mode: "insensitive" } }],
         followUpRequired: true,
         followUpAt: { lte: new Date() },

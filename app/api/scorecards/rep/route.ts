@@ -1,4 +1,5 @@
 // app/api/scorecards/rep/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
@@ -59,6 +60,7 @@ function exVatForOrder(o: {
 }
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const repId = searchParams.get("repId");
   const start = parseStart(searchParams.get("start") || searchParams.get("month"));
@@ -187,7 +189,7 @@ export async function GET(req: Request) {
 
   // targets for this exact period & rep
   const targets = await prisma.target.findMany({
-    where: {
+    where: { companyId: t.companyId,
       scope: "REP",
       repId,
       periodStart: curStart,

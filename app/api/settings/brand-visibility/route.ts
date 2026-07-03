@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
@@ -43,22 +44,26 @@ async function currentUser(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  const t = await requireTenant();
   const type = (req.nextUrl.searchParams.get("type") || "stocked").toLowerCase();
   if (type === "stocked") {
     const rows = await prisma.stockedBrand.findMany({
-      orderBy: { name: "asc" },
+      where: { companyId: t.companyId },
+orderBy: { name: "asc" },
       select: { id: true, name: true, visibleInCallLog: true, visibleInReports: true },
     });
     return NextResponse.json({ rows });
   }
   const rows = await prisma.brand.findMany({
-    orderBy: { name: "asc" },
+    where: { companyId: t.companyId },
+orderBy: { name: "asc" },
     select: { id: true, name: true, visibleInCallLog: true },
   });
   return NextResponse.json({ rows });
 }
 
 export async function PATCH(req: NextRequest) {
+  const t = await requireTenant();
   const me = await currentUser(req);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (me.role !== "ADMIN") return NextResponse.json({ error: "Forbidden" }, { status: 403 });

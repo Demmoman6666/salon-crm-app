@@ -1,4 +1,5 @@
 // app/customers/[id]/edit/page.tsx
+import { requireTenant } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import EditForm from "./EditForm";
@@ -7,10 +8,14 @@ import { revalidatePath } from "next/cache";
 export default async function EditCustomerPage({
   params,
 }: { params: { id: string } }) {
+  const t = await requireTenant();
   const [customer, reps, brands] = await Promise.all([
-    prisma.customer.findUnique({ where: { id: params.id } }),
-    prisma.salesRep.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
-    prisma.brand.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.customer.findFirst({
+    where: { companyId: t.companyId, id: params.id } }),
+    prisma.salesRep.findMany({ where: { companyId: t.companyId },
+orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    prisma.brand.findMany({ where: { companyId: t.companyId },
+orderBy: { name: "asc" }, select: { id: true, name: true } }),
   ]);
 
   if (!customer) {

@@ -1,4 +1,5 @@
 // app/api/sales-reps/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Role } from "@prisma/client";
@@ -9,13 +10,15 @@ export const runtime = "nodejs";
 type UiRep = { id: string; name: string; email?: string | null };
 
 export async function GET(req: NextRequest) {
+  const t = await requireTenant();
   const mode = (req.nextUrl?.searchParams.get("mode") || "canonical").toLowerCase();
 
   try {
     // ---- Canonical only (default) ----
     if (mode !== "all") {
       const reps = await prisma.salesRep.findMany({
-        select: { id: true, name: true, email: true },
+        where: { companyId: t.companyId },
+select: { id: true, name: true, email: true },
         orderBy: { name: "asc" },
       });
       return NextResponse.json(reps as UiRep[]);
@@ -23,13 +26,14 @@ export async function GET(req: NextRequest) {
 
     // ---- Aggregated view (only if ?mode=all) ----
     const [tbl, users, staffRows, custRows] = await Promise.all([
-      prisma.salesRep.findMany({ select: { id: true, name: true, email: true } }),
+      prisma.salesRep.findMany({ where: { companyId: t.companyId },
+select: { id: true, name: true, email: true } }),
       prisma.user.findMany({
-        where: { isActive: true, role: { in: [Role.REP, Role.MANAGER, Role.ADMIN] } },
+        where: { companyId: t.companyId, isActive: true, role: { in: [Role.REP, Role.MANAGER, Role.ADMIN] } },
         select: { fullName: true, email: true },
       }),
-      prisma.callLog.findMany({ where: { staff: { not: null } }, select: { staff: true }, distinct: ["staff"] }),
-      prisma.customer.findMany({ where: { salesRep: { not: null } }, select: { salesRep: true }, distinct: ["salesRep"] }),
+      prisma.callLog.findMany({ where: { companyId: t.companyId, staff: { not: null } }, select: { staff: true }, distinct: ["staff"] }),
+      prisma.customer.findMany({ where: { companyId: t.companyId, salesRep: { not: null } }, select: { salesRep: true }, distinct: ["salesRep"] }),
     ]);
 
     const canonicalByName = new Map(

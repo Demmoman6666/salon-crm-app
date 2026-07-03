@@ -1,4 +1,5 @@
 // app/api/education/requests/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { EducationType, EducationRequestStatus } from "@prisma/client";
@@ -50,6 +51,7 @@ function normalizeStatus(v: unknown): EducationRequestStatus {
 
 /* -------------------- POST /api/education/requests -------------------- */
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const isForm = isFormRequest(req);
 
@@ -164,6 +166,7 @@ export async function POST(req: Request) {
     // Create request
     const created = await prisma.educationRequest.create({
       data: {
+        companyId: t.companyId,
         customerId: payload.customerId,
         status,
         salonName: payload.salonName,
@@ -200,6 +203,7 @@ export async function POST(req: Request) {
    - take=number (default 50)
 */
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const statusQ = searchParams.get("status") || "REQUESTED";
   const take = Math.min(Math.max(Number(searchParams.get("take") || 50), 1), 200);

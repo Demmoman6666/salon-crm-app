@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
@@ -26,6 +27,7 @@ const STAGE_TEXT: Record<string, string> = {
 };
 
 export default async function CustomersPage({ searchParams }: PageProps) {
+  const t = await requireTenant();
   const q = (searchParams?.q ?? "").trim();
 
   const ci = (value: string) => ({ contains: value, mode: "insensitive" as const });

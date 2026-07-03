@@ -1,4 +1,5 @@
 // app/education/requests/new/page.tsx
+import { requireTenant } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 import EducationRequestForm from "@/components/EducationRequestForm";
 
@@ -9,11 +10,12 @@ export default async function NewEducationRequestPage({
 }: {
   searchParams: { customerId?: string };
 }) {
+  const t = await requireTenant();
   const customerId = searchParams?.customerId || "";
 
   const customer = customerId
-    ? await prisma.customer.findUnique({
-        where: { id: customerId },
+    ? await prisma.customer.findFirst({
+    where: { companyId: t.companyId, id: customerId },
         select: {
           id: true,
           salonName: true,

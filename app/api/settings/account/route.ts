@@ -1,4 +1,5 @@
 // app/api/settings/account/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -8,12 +9,15 @@ export const runtime = "nodejs"; // ensure Node runtime for bcryptjs
 
 // Accept POST, PATCH, PUT -> all behave the same
 export async function POST(req: Request) {
+  const t = await requireTenant();
   return handleUpdate(req);
 }
 export async function PATCH(req: Request) {
+  const t = await requireTenant();
   return handleUpdate(req);
 }
 export async function PUT(req: Request) {
+  const t = await requireTenant();
   return handleUpdate(req);
 }
 

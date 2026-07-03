@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import RefundFormClient from "./RefundFormClient";
@@ -5,8 +6,9 @@ import RefundFormClient from "./RefundFormClient";
 const VAT_RATE = Number(process.env.VAT_RATE ?? "0.20");
 
 export default async function RefundPage({ params }: { params: { id: string } }) {
-  const order = await prisma.order.findUnique({
-    where: { id: params.id },
+  const t = await requireTenant();
+  const order = await prisma.order.findFirst({
+    where: { companyId: t.companyId, id: params.id },
     include: {
       customer: { select: { id: true, salonName: true, customerName: true } },
       lineItems: true,

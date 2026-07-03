@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -22,7 +24,7 @@ export async function POST(req: Request) {
   if (!customer) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
   const calls = await (prisma as any).callLog.findMany({
-    where: { customerId },
+    where: { companyId: t.companyId, customerId },
     orderBy: { createdAt: "desc" },
     take: 10,
   });
@@ -31,21 +33,21 @@ export async function POST(req: Request) {
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
   const orders = await prisma.order.findMany({
-    where: { customerId, processedAt: { gte: sixMonthsAgo } },
+    where: { companyId: t.companyId, customerId, processedAt: { gte: sixMonthsAgo } },
     orderBy: { processedAt: "desc" },
     take: 20,
     include: { lineItems: { select: { productVendor: true, productTitle: true, quantity: true, total: true } } },
   });
 
   const allOrders = await prisma.order.findMany({
-    where: { customerId },
+    where: { companyId: t.companyId, customerId },
     orderBy: { processedAt: "desc" },
     take: 50,
     include: { lineItems: { select: { productVendor: true, productTitle: true, quantity: true, total: true } } },
   });
 
   const notes = await (prisma as any).note.findMany({
-    where: { customerId },
+    where: { companyId: t.companyId, customerId },
     orderBy: { createdAt: "desc" },
     take: 5,
   });
@@ -71,7 +73,7 @@ export async function POST(req: Request) {
     ? Math.floor((Date.now() - new Date(lastOrder.processedAt).getTime()) / 86400000)
     : null;
 
-  const ourBrandRows = await (prisma as any).stockedBrand.findMany({ where: { visibleInReports: true }, select: { name: true } });
+  const ourBrandRows = await (prisma as any).stockedBrand.findMany({ where: { companyId: t.companyId, visibleInReports: true }, select: { name: true } });
   const OUR_BRANDS: string[] = ourBrandRows.map((b: any) => b.name);
   const missingBrands = OUR_BRANDS.filter(b => !brandSpend[b]);
   const topBrand = Object.entries(brandSpend).sort((a, b) => b[1] - a[1])[0]?.[0];

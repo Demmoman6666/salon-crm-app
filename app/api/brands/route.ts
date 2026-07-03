@@ -1,4 +1,5 @@
 // app/api/brands/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
@@ -54,6 +55,7 @@ async function readBody(req: Request) {
 
 /* GET: list brands (id, name, visibleInCallLog) */
 export async function GET() {
+  const t = await requireTenant();
   const g = await requireUser();
   if ("error" in g) return g.error;
 
@@ -66,6 +68,7 @@ export async function GET() {
 
 /* POST: create one competitor brand { name } */
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const g = await requireAdmin();
   if ("error" in g) return g.error;
 
@@ -75,7 +78,8 @@ export async function POST(req: Request) {
 
   try {
     const created = await prisma.brand.create({
-      data: { name },
+      data: {
+        companyId: t.companyId, name },
       select: { id: true, name: true, visibleInCallLog: true },
     });
     return NextResponse.json(created, { status: 201 });
@@ -87,6 +91,7 @@ export async function POST(req: Request) {
 
 /* PATCH: toggle visibility { id, visible } */
 export async function PATCH(req: Request) {
+  const t = await requireTenant();
   const g = await requireAdmin();
   if ("error" in g) return g.error;
 
@@ -110,6 +115,7 @@ export async function PATCH(req: Request) {
 
 /* DELETE: ?id=... */
 export async function DELETE(req: Request) {
+  const t = await requireTenant();
   const g = await requireAdmin();
   if ("error" in g) return g.error;
 

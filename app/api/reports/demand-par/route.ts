@@ -1,4 +1,5 @@
 // app/api/reports/demand-par/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -41,6 +42,7 @@ function computeWindow(tf: Timeframe): { start: Date; end: Date; monthsEq: numbe
 }
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   try {
     const { searchParams } = new URL(req.url);
     const customerId = searchParams.get("customerId");

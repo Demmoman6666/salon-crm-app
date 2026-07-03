@@ -1,4 +1,5 @@
 // app/api/salesreps/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
@@ -7,11 +8,13 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
+  const t = await requireTenant();
   const reps = await prisma.salesRep.findMany({ orderBy: { name: "asc" } });
   return NextResponse.json(reps);
 }
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const me = await getCurrentUser();
   if (!isAdmin(me)) {
     return NextResponse.json({ error: "Admin only" }, { status: 403 });
@@ -24,6 +27,7 @@ export async function POST(req: Request) {
     }
     const rep = await prisma.salesRep.create({
       data: {
+        companyId: t.companyId,
         name: String(name).trim(),
         email: email ? String(email).trim() : null,
         phone: phone ? String(phone).trim() : null,

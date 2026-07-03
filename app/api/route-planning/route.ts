@@ -1,4 +1,5 @@
 // app/api/route-planning/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
@@ -77,6 +78,7 @@ function tokensFromDaysOpen(csv?: string | null): Set<DowShort> {
 const VALID_ROUTE_DAYS = new Set(["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY"]);
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
 
   const reps = parseCommaList(searchParams.get("reps"));

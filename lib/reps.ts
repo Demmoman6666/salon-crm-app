@@ -8,8 +8,9 @@ export function normRepName(input: string) {
 }
 
 /** List all reps (sorted) */
-export async function getAllReps(): Promise<Rep[]> {
+export async function getAllReps(companyId: string): Promise<Rep[]> {
   const reps = await prisma.salesRep.findMany({
+    where: { companyId },
     orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
@@ -17,21 +18,20 @@ export async function getAllReps(): Promise<Rep[]> {
 }
 
 /** Find (case-insensitive) or create and return the rep id for a name */
-export async function getOrCreateRepIdByName(nameRaw: string): Promise<string | null> {
+export async function getOrCreateRepIdByName(companyId: string, nameRaw: string): Promise<string | null> {
   const name = normRepName(nameRaw);
   if (!name) return null;
 
   // try exact first
-  const exact = await prisma.salesRep.findFirst({ where: { name } , select: { id: true }});
+  const exact = await prisma.salesRep.findFirst({ where: { companyId,  name } , select: { id: true }});
   if (exact) return exact.id;
 
   // try case-insensitive match
-  const ci = await prisma.salesRep.findFirst({
-    where: { name: { equals: name, mode: "insensitive" } },
+  const ci = await prisma.salesRep.findFirst({ where: { companyId,  name: { equals: name, mode: "insensitive" } },
     select: { id: true },
   });
   if (ci) return ci.id;
 
-  const created = await prisma.salesRep.create({ data: { name }, select: { id: true } });
+  const created = await prisma.salesRep.create({ data: { companyId, name }, select: { id: true } });
   return created.id;
 }

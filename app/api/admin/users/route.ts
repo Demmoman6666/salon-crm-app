@@ -1,4 +1,5 @@
 // app/api/admin/users/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -25,6 +26,7 @@ function coerceRole(input: any): Role | undefined {
 
 /** GET /api/admin/users — list all users (admin only) */
 export async function GET() {
+  const t = await requireTenant();
   const guard = await requireAdmin();
   if (guard) return guard;
 
@@ -49,6 +51,7 @@ export async function GET() {
  *  body: { fullName, email, password, phone?, role?, isActive? }
  */
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const guard = await requireAdmin();
   if (guard) return guard;
 
@@ -79,6 +82,7 @@ export async function POST(req: Request) {
 
     const created = await prisma.user.create({
       data: {
+        companyId: t.companyId,
         fullName,
         email,
         phone: phone || null,

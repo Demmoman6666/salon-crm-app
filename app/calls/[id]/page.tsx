@@ -1,4 +1,5 @@
 // app/calls/[id]/page.tsx
+import { requireTenant } from "@/lib/tenant";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatDateTimeUK } from "@/lib/dates";
@@ -70,6 +71,7 @@ async function getCallWithFallback(id: string) {
 }
 
 export default async function CallLogViewPage({ params }: { params: { id: string } }) {
+  const t = await requireTenant();
   const { call, degraded } = await getCallWithFallback(params.id);
 
   if (!call) {

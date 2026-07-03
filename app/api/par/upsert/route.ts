@@ -1,4 +1,5 @@
 // app/api/par/upsert/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -6,6 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const body = await req.json();
     const { customerId, sku, parQty } = body as { customerId: string; sku: string; parQty: number };

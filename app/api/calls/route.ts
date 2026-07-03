@@ -2,6 +2,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveStageAfterOutcome } from "@/lib/pipeline";
@@ -168,6 +169,7 @@ function toArr<T>(v: T | T[] | null | undefined): T[] {
 
 /* --------------- POST /api/calls --------------- */
 export async function POST(req: NextRequest) {
+  const t = await requireTenant();
   try {
     const body: any = await readBody(req);
 
@@ -269,6 +271,7 @@ export async function POST(req: NextRequest) {
 
     const created = await prisma.callLog.create({
       data: {
+        companyId: t.companyId,
         isExistingCustomer: !!isExisting,
         customerId,
         customerName: leadCustomerName,
@@ -358,6 +361,7 @@ export async function POST(req: NextRequest) {
         if (cust) {
           const eduRequest = await (prisma as any).educationRequest.create({
             data: {
+        companyId: t.companyId,
               customerId,
               status: "REQUESTED",
               salonName: cust.salonName ?? null,
@@ -410,6 +414,7 @@ export async function POST(req: NextRequest) {
 
 /* --------------- GET /api/calls (filterable) --------------- */
 export async function GET(req: NextRequest) {
+  const t = await requireTenant();
   // Use NextRequest.nextUrl when available; fall back safely.
   const sp =
     (req as any)?.nextUrl?.searchParams ??

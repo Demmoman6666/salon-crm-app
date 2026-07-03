@@ -1,4 +1,5 @@
 // app/api/customers/[id]/route-plan/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 const DAY_SET = new Set(["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY"]);
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
+  const t = await requireTenant();
   const c = await prisma.customer.findUnique({
     where: { id: params.id },
     select: { id: true, routePlanEnabled: true, routeWeeks: true, routeDays: true },
@@ -18,6 +20,7 @@ export async function GET(_: Request, { params }: { params: { id: string } }) {
 }
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const t = await requireTenant();
   const body = await req.json().catch(() => ({}));
   const enabled = Boolean(body?.enabled);
   const weeks: number[] = Array.isArray(body?.weeks) ? body.weeks : [];

@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -5,6 +6,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   try {
     const url = new URL(req.url);
     const from = url.searchParams.get("from");
@@ -12,7 +14,7 @@ export async function GET(req: Request) {
     const repId = url.searchParams.get("repId") || null;
 
     const brands = await prisma.stockedBrand.findMany({
-      where: { visibleInReports: true },
+      where: { companyId: t.companyId, visibleInReports: true },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     });
@@ -36,7 +38,7 @@ export async function GET(req: Request) {
     const customerIds = customers.map(c => c.id);
 
     const orders = await prisma.order.findMany({
-      where: { customerId: { in: customerIds }, ...(Object.keys(dateFilter).length ? { processedAt: dateFilter } : {}) },
+      where: { companyId: t.companyId, customerId: { in: customerIds }, ...(Object.keys(dateFilter).length ? { processedAt: dateFilter } : {}) },
       select: { customerId: true, lineItems: { select: { productVendor: true, quantity: true } } },
     });
 

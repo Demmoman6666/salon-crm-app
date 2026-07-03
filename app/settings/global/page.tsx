@@ -1,4 +1,5 @@
 // app/settings/global/page.tsx
+import { requireTenant } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
 import crypto from "crypto";
@@ -74,19 +75,22 @@ export default async function GlobalSettingsPage() {
     const name = String(formData.get("rep_name") || "").trim();
     const email = String(formData.get("rep_email") || "").trim() || null;
     if (!name) return;
-    await prisma.salesRep.create({ data: { name, email } });
+    const t = await requireTenant();
+    await prisma.salesRep.create({ data: { companyId: t.companyId, name, email } });
   }
   async function addCompetitorBrand(formData: FormData) {
     "use server";
     const name = String(formData.get("brand_name") || "").trim();
     if (!name) return;
-    await prisma.brand.create({ data: { name } });
+    const t = await requireTenant();
+    await prisma.brand.create({ data: { companyId: t.companyId, name } });
   }
   async function addStockedBrand(formData: FormData) {
     "use server";
     const name = String(formData.get("stocked_name") || "").trim();
     if (!name) return;
-    await prisma.stockedBrand.create({ data: { name } });
+    const t = await requireTenant();
+    await prisma.stockedBrand.create({ data: { companyId: t.companyId, name } });
   }
 
   return (

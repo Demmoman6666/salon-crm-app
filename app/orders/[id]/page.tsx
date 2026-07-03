@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
@@ -22,8 +23,9 @@ export default async function OrderDetailPage({
   params: { id: string };
   searchParams?: Record<string, string | string[] | undefined>;
 }) {
-  const order = await prisma.order.findUnique({
-    where: { id: params.id },
+  const t = await requireTenant();
+  const order = await prisma.order.findFirst({
+    where: { companyId: t.companyId, id: params.id },
     include: {
       customer: { select: { id: true, salonName: true, customerName: true } },
       lineItems: true,

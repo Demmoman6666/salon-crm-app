@@ -1,4 +1,5 @@
 // app/api/vendors/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -6,6 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   try {
     const url = new URL(req.url);
     const q = (url.searchParams.get("q") || "").trim();
@@ -34,7 +36,7 @@ export async function GET(req: Request) {
 
     async function fetchOrders(): Promise<string[]> {
       const rows = await prisma.orderLineItem.findMany({
-        where: { productVendor: { not: null } },
+        where: { companyId: t.companyId, productVendor: { not: null } },
         select: { productVendor: true },
         distinct: ["productVendor"],
       });

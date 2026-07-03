@@ -1,4 +1,5 @@
 // app/saleshub/calendar/page.tsx
+import { requireTenant } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 import FollowUpsCalendar from "@/components/FollowUpsCalendar";
 
@@ -6,8 +7,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export default async function CalendarPage() {
+  const t = await requireTenant();
   const reps = await prisma.salesRep.findMany({
-    orderBy: { name: "asc" },
+    where: { companyId: t.companyId },
+orderBy: { name: "asc" },
     select: { id: true, name: true },
   });
 

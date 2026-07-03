@@ -1,4 +1,5 @@
 // app/education/booked/page.tsx
+import { requireTenant } from "@/lib/tenant";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
@@ -16,8 +17,10 @@ function fmtDate(d?: Date | null) {
 }
 
 export default async function EducationBookedPage() {
+  const t = await requireTenant();
   const items = await prisma.educationBooking.findMany({
-    orderBy: [{ createdAt: "desc" }], // ✅ only use fields that exist
+    where: { companyId: t.companyId },
+orderBy: [{ createdAt: "desc" }], // ✅ only use fields that exist
     include: {
       customer: {
         select: { id: true, salonName: true, customerName: true, salesRep: true },

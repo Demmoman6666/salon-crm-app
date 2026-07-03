@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const t = await requireTenant();
   const me = await getCurrentUser();
   if (!isAdmin(me)) return NextResponse.json({ error: "Admin only" }, { status: 403 });
   if (me?.id === params.id) return NextResponse.json({ error: "Cannot delete yourself" }, { status: 400 });

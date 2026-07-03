@@ -1,4 +1,5 @@
 // app/api/reports/calls/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -58,6 +59,7 @@ function durationMins(log: {
 
 /* ---- route ---- */
 export async function GET(req: Request) {
+  const t = await requireTenant();
   try {
     const { searchParams } = new URL(req.url);
     const fromStr = searchParams.get("from");
@@ -80,7 +82,7 @@ export async function GET(req: Request) {
 
     // Pull JUST the fields we need so we can apply flexible logic client-side
     const logs = await prisma.callLog.findMany({
-      where: {
+      where: { companyId: t.companyId,
         createdAt: { gte, lt },
         ...(staff ? { staff } : {}),
       },

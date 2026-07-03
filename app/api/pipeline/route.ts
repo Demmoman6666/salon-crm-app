@@ -1,4 +1,5 @@
 // app/api/pipeline/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -18,6 +19,7 @@ function normStage(input?: string | null): Stage | null {
 }
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
 
   // Accept ?rep= or ?salesRep=
@@ -33,11 +35,11 @@ export async function GET(req: Request) {
 
   // Counts respect Sales Rep filter, but not the stage filter (so you can see the whole breakdown)
   const [lead, engaged, appt, sampling, customer, total] = await Promise.all([
-    prisma.customer.count({ where: { ...whereBase, stage: "LEAD" } }),
-    prisma.customer.count({ where: { ...whereBase, stage: "ENGAGED" } }),
-    prisma.customer.count({ where: { ...whereBase, stage: "APPOINTMENT_BOOKED" } }),
-    prisma.customer.count({ where: { ...whereBase, stage: "SAMPLING" } }),
-    prisma.customer.count({ where: { ...whereBase, stage: "CUSTOMER" } }),
+    prisma.customer.count({ where: { companyId: t.companyId, ...whereBase, stage: "LEAD" } }),
+    prisma.customer.count({ where: { companyId: t.companyId, ...whereBase, stage: "ENGAGED" } }),
+    prisma.customer.count({ where: { companyId: t.companyId, ...whereBase, stage: "APPOINTMENT_BOOKED" } }),
+    prisma.customer.count({ where: { companyId: t.companyId, ...whereBase, stage: "SAMPLING" } }),
+    prisma.customer.count({ where: { companyId: t.companyId, ...whereBase, stage: "CUSTOMER" } }),
     prisma.customer.count({ where: whereBase }),
   ]);
 

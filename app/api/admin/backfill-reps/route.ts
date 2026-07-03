@@ -2,12 +2,14 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { normRepName, getOrCreateRepIdByName } from "@/lib/reps";
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   try {
     const me = await getCurrentUser();
     if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -51,7 +53,7 @@ export async function GET(req: Request) {
     // 2) Ensure SalesRep rows exist for every name
     const nameToId = new Map<string, string>();
     for (const name of names) {
-      const id = await getOrCreateRepIdByName(name);
+      const id = await getOrCreateRepIdByName(t.companyId, name);
       if (id) nameToId.set(name, id);
     }
 

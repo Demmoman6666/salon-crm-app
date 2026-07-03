@@ -1,4 +1,5 @@
 // app/api/admin/users/[id]/permissions/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -26,6 +27,7 @@ export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const t = await requireTenant();
   const guard = await requireAdmin();
   if (guard) return guard;
 
@@ -77,5 +79,6 @@ export async function PATCH(
   req: Request,
   ctx: { params: { id: string } }
 ) {
+  const t = await requireTenant();
   return PUT(req, ctx);
 }

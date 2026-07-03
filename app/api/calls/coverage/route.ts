@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -14,6 +15,7 @@ export const runtime = "nodejs";
  *   (Your schema doesn't link CallLog -> SalesRep, so staff name is our best filter.)
  */
 export async function GET(req: NextRequest) {
+  const t = await requireTenant();
   try {
     const repId = req.nextUrl.searchParams.get("repId") || "";
     let repName: string | null = null;

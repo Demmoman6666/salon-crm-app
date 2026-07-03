@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -5,6 +6,7 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const t = await requireTenant();
   try {
     const body = await req.json();
     const { date, summary, staff, startTime, endTime } = body as {
@@ -47,6 +49,7 @@ export async function POST(
 
     const created = await prisma.visit.create({
       data: {
+        companyId: t.companyId,
         customerId: params.id,
         date: visitDate,
         summary: summary ?? null,

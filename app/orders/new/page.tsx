@@ -1,4 +1,5 @@
 // app/orders/new/page.tsx
+import { requireTenant } from "@/lib/tenant";
 import { Suspense } from "react";
 import { prisma } from "@/lib/prisma";
 import ClientNewOrder from "./ClientNewOrder";
@@ -11,11 +12,12 @@ type PageProps = {
 };
 
 export default async function Page({ searchParams }: PageProps) {
+  const t = await requireTenant();
   const customerId = searchParams?.customerId || "";
 
   const initialCustomer = customerId
-    ? await prisma.customer.findUnique({
-        where: { id: customerId },
+    ? await prisma.customer.findFirst({
+    where: { companyId: t.companyId, id: customerId },
         select: {
           id: true,
           salonName: true,

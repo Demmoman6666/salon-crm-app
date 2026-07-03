@@ -1,4 +1,5 @@
 // app/api/customers/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -110,6 +111,7 @@ function normalizeStage(input: unknown): Stage {
 
 /* ------------------ POST /api/customers ------------------ */
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const contentType = (req.headers.get("content-type") || "").toLowerCase();
     const isForm =
@@ -155,7 +157,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const created = await prisma.customer.create({ data });
+    const created = await prisma.customer.create({ data: { ...data, companyId: t.companyId } });
 
     if (isForm) {
       return NextResponse.redirect(new URL(`/customers/${created.id}`, req.url), { status: 303 });
@@ -169,6 +171,7 @@ export async function POST(req: Request) {
 
 /* ------------------ GET /api/customers (search) ------------------ */
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("search") || searchParams.get("q") || "").trim();
   const takeParam = Number(searchParams.get("take") || 20);

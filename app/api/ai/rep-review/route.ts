@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -23,7 +25,7 @@ export async function POST(req: Request) {
 
   const [calls, totalCustomers, customersByStage, newCustomers, overdueFollowUps] = await Promise.all([
     (prisma as any).callLog.findMany({
-      where: {
+      where: { companyId: t.companyId,
         OR: [{ repId: rep.id }, { staff: { equals: rep.name, mode: "insensitive" } }],
         createdAt: { gte: thirtyDaysAgo },
       },
@@ -34,11 +36,11 @@ export async function POST(req: Request) {
         followUpRequired: true, followUpAt: true, summary: true,
       },
     }),
-    prisma.customer.count({ where: { salesRepId: rep.id } }),
+    prisma.customer.count({ where: { companyId: t.companyId, salesRepId: rep.id } }),
     prisma.customer.groupBy({ by: ["stage"], where: { salesRepId: rep.id }, _count: { _all: true } }),
-    prisma.customer.count({ where: { salesRepId: rep.id, createdAt: { gte: thirtyDaysAgo } } }),
+    prisma.customer.count({ where: { companyId: t.companyId, salesRepId: rep.id, createdAt: { gte: thirtyDaysAgo } } }),
     (prisma as any).callLog.count({
-      where: {
+      where: { companyId: t.companyId,
         OR: [{ repId: rep.id }, { staff: { equals: rep.name, mode: "insensitive" } }],
         followUpRequired: true,
         followUpAt: { lt: new Date() },
@@ -47,7 +49,7 @@ export async function POST(req: Request) {
   ]);
 
   const orders = await prisma.order.findMany({
-    where: { customer: { salesRepId: rep.id }, processedAt: { gte: thirtyDaysAgo } },
+    where: { companyId: t.companyId, customer: { salesRepId: rep.id }, processedAt: { gte: thirtyDaysAgo } },
     select: { total: true },
   });
   const revenue = orders.reduce((s, o) => s + Number((o as any).total || 0), 0);

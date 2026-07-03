@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -5,6 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   try {
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get("q") || "").trim();
@@ -15,7 +17,7 @@ export async function GET(req: Request) {
     }
 
     const results = await prisma.customer.findMany({
-      where: {
+      where: { companyId: t.companyId,
         OR: [
           { salonName: { contains: q, mode: "insensitive" } },
           { customerName: { contains: q, mode: "insensitive" } },

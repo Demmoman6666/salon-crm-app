@@ -2,6 +2,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Role, Permission } from "@prisma/client";
@@ -38,6 +39,7 @@ async function readBody(req: Request) {
 
 /* ----------------------- GET /api/users ----------------------- */
 export async function GET() {
+  const t = await requireTenant();
   const guard = await requireAdmin();
   if ("error" in guard) return guard.error;
 
@@ -61,6 +63,7 @@ export async function GET() {
 
 /* ----------------------- POST /api/users ----------------------- */
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const guard = await requireAdmin();
   if ("error" in guard) return guard.error;
 
@@ -119,6 +122,7 @@ export async function POST(req: Request) {
 
     const created = await prisma.user.create({
       data: {
+        companyId: t.companyId,
         fullName,
         email,
         phone,

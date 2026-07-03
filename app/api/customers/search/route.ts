@@ -1,13 +1,15 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") || "").trim();
   if (!q) return NextResponse.json([]);
 
   const matches = await prisma.customer.findMany({
-    where: {
+    where: { companyId: t.companyId,
       OR: [
         { salonName: { contains: q, mode: "insensitive" } },
         { customerName: { contains: q, mode: "insensitive" } },

@@ -1,4 +1,5 @@
 // app/education/requests/page.tsx
+import { requireTenant } from "@/lib/tenant";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
@@ -33,8 +34,9 @@ function prettyEdu(types?: string[] | null) {
 }
 
 export default async function EducationRequestsPage() {
+  const t = await requireTenant();
   const rows = await prisma.educationRequest.findMany({
-    where: { status: "REQUESTED" }, // only requests that need review
+    where: { companyId: t.companyId, status: "REQUESTED" }, // only requests that need review
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

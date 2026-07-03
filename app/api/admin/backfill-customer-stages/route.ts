@@ -2,6 +2,7 @@
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -22,6 +23,7 @@ async function requireAdmin() {
 
 /** GET = preview how many would change */
 export async function GET() {
+  const t = await requireTenant();
   const guard = await requireAdmin();
   if ("error" in guard) return guard.error;
 
@@ -41,6 +43,7 @@ export async function GET() {
 
 /** POST = perform the backfill */
 export async function POST() {
+  const t = await requireTenant();
   const guard = await requireAdmin();
   if ("error" in guard) return guard.error;
 

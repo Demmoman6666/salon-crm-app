@@ -1,4 +1,5 @@
 // app/api/customers/[id]/payment-terms/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 type Params = { params: { id: string } };
 
 export async function GET(_: Request, { params }: Params) {
+  const t = await requireTenant();
   const id = params.id;
   if (!id) {
     return NextResponse.json({ error: "Missing id" }, { status: 400 });

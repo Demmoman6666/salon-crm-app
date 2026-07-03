@@ -1,4 +1,5 @@
 // app/api/reports/vendor-spend/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -70,6 +71,7 @@ function wantsCSV(req: Request, sp: URLSearchParams) {
 
 /* ---------- GET /api/reports/vendor-spend ---------- */
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const url = new URL(req.url);
   const { searchParams } = url;
 
@@ -88,7 +90,8 @@ export async function GET(req: Request) {
   ).map(s => s.trim()).filter(Boolean);
 
   // Load StockedBrand list to get canonical display names for vendors
-  const stocked = await prisma.stockedBrand.findMany({ select: { name: true } });
+  const stocked = await prisma.stockedBrand.findMany({ where: { companyId: t.companyId },
+select: { name: true } });
   const canonicalByKey = new Map<string, string>(); // normKey -> Canonical Display
   for (const b of stocked) {
     const label = (b.name || "").trim();

@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -5,6 +6,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   try {
     const { searchParams } = new URL(req.url);
     const q = (searchParams.get("q") || "").trim();
@@ -12,7 +14,7 @@ export async function GET(req: Request) {
 
     // Only our own stocked brands (the same list managed in Brand Management)
     const brands = await prisma.stockedBrand.findMany({
-      where: {
+      where: { companyId: t.companyId,
         visibleInReports: true,
         ...(q.length >= 2 ? { name: { contains: q, mode: "insensitive" } } : {}),
       },

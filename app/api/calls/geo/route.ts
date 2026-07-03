@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -10,6 +11,7 @@ export const runtime = "nodejs";
  * - days: optional integer window (defaults 90)
  */
 export async function GET(req: NextRequest) {
+  const t = await requireTenant();
   try {
     const sp = req.nextUrl.searchParams;
     const rep = (sp.get("rep") || "").trim() || null;

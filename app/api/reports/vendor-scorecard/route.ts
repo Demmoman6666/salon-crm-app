@@ -1,4 +1,5 @@
 // app/api/reports/vendor-scorecard/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@prisma/client";
@@ -32,6 +33,7 @@ function addDays(d: Date, n: number) {
 }
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const url = new URL(req.url);
   const startStr = url.searchParams.get("start");
   const endStr = url.searchParams.get("end");
@@ -57,7 +59,8 @@ export async function GET(req: Request) {
       .filter(Boolean);
   } else {
     const brands = await prisma.stockedBrand.findMany({
-      select: { name: true },
+      where: { companyId: t.companyId },
+select: { name: true },
       orderBy: { name: "asc" },
     });
     vendorNames = brands.map((b) => b.name);

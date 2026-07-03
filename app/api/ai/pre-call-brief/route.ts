@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -6,6 +7,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -47,7 +49,7 @@ export async function GET(req: Request) {
 
     // Get stocked brands for gap analysis
     const stockedBrands = await prisma.stockedBrand.findMany({
-      where: { visibleInReports: true },
+      where: { companyId: t.companyId, visibleInReports: true },
       select: { name: true },
     });
     const brandNames = stockedBrands.map(b => b.name);

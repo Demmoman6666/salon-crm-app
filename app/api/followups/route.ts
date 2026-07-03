@@ -1,4 +1,5 @@
 // app/api/followups/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -19,6 +20,7 @@ function parseReps(param: string | null): string[] {
 }
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const fromStr = searchParams.get("from"); // inclusive
   const toStr   = searchParams.get("to");   // exclusive
@@ -40,7 +42,7 @@ export async function GET(req: Request) {
     : {};
 
   const logs = await prisma.callLog.findMany({
-    where: {
+    where: { companyId: t.companyId,
       followUpAt: { gte: from!, lt: to!, not: null },
       outcome: { equals: "Appointment booked", mode: "insensitive" }, // ← only these
       ...repWhere,

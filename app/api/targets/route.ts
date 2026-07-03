@@ -1,4 +1,5 @@
 // app/api/targets/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { TargetScope, TargetMetric } from "@prisma/client";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/targets?scope=&metric=&repId=&vendorId=&start=YYYY-MM&end=YYYY-MM
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
 
   const scope = searchParams.get("scope") as TargetScope | null;
@@ -42,6 +44,7 @@ export async function GET(req: Request) {
 
 // POST /api/targets  (upsert by unique bucket+period)
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const body = await req.json().catch(() => ({}));
 
   const scope = String(body.scope || "REP").toUpperCase() as TargetScope;

@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -6,14 +7,16 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
+  const t = await requireTenant();
   const educators = await (prisma as any).educator.findMany({
     orderBy: { name: "asc" },
-    where: { active: true },
+    where: { companyId: t.companyId, active: true },
   });
   return NextResponse.json(educators);
 }
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -23,6 +26,7 @@ export async function POST(req: Request) {
 
   const educator = await (prisma as any).educator.create({
     data: {
+      companyId: t.companyId,
       name: name.trim(),
       email: email?.trim() || null,
       phone: phone?.trim() || null,

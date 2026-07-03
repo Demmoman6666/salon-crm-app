@@ -119,7 +119,8 @@ export async function POST(req: Request) {
     const name = body.name.trim();
     try {
       const created = await prisma.stockedBrand.create({
-        data: { name }, // visibleInCallLog defaults to false; toggle via PATCH
+        data: {
+        companyId: t.companyId, name }, // visibleInCallLog defaults to false; toggle via PATCH
         select: { id: true, name: true, visibleInCallLog: true },
       });
       return NextResponse.json(created, { status: 201 });
