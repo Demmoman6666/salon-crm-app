@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
@@ -66,6 +67,7 @@ async function readBody(req: Request) {
 // --- main --------------------------------------------------------------
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const { draftId, customerId, to: toRaw } = await readBody(req);
 
@@ -90,7 +92,7 @@ export async function POST(req: Request) {
     }
 
     // Load the draft order from Shopify (for lines & titles)
-    const draftRes = await shopifyRest(`/draft_orders/${draftId}.json`, { method: "GET" });
+    const draftRes = await shopifyRest(t.companyId, `/draft_orders/${draftId}.json`, { method: "GET" });
     const draftText = await draftRes.text().catch(() => "");
     if (!draftRes.ok) {
       return NextResponse.json(
@@ -134,6 +136,7 @@ export async function POST(req: Request) {
         product_data: {
           name,
           metadata: {
+        companyId: t.companyId,
             variantId: li.variant_id ? String(li.variant_id) : "",
             crmDraftOrderId: String(draftId),
           },
@@ -174,7 +177,7 @@ export async function POST(req: Request) {
 
     // Optional: annotate draft for audit
     try {
-      await shopifyRest(`/draft_orders/${draftId}.json`, {
+      await shopifyRest(t.companyId, `/draft_orders/${draftId}.json`, {
         method: "PUT",
         body: JSON.stringify({
           draft_order: {
@@ -193,5 +196,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const t = await requireTenant();
   return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
 }

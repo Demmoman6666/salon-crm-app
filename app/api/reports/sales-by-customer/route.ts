@@ -1,4 +1,5 @@
 // app/api/reports/sales-by-customer/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchVariantUnitCosts, fetchVariantIdsBySkus } from "@/lib/shopify";
@@ -68,6 +69,7 @@ function normalizeCostMap(input: any): Map<string, CostEntry> {
 
 /* =============================== Route =============================== */
 export async function GET(req: Request) {
+  const t = await requireTenant();
   try {
     const { searchParams } = new URL(req.url);
 
@@ -209,7 +211,7 @@ export async function GET(req: Request) {
       const BACKFILL_SKU_LIMIT = 100;
       const uniqueSkus = Array.from(new Set(linesMissingVariant.map(x => x.sku))).slice(0, BACKFILL_SKU_LIMIT);
       try {
-        const skuToVariant = await fetchVariantIdsBySkus(uniqueSkus); // Map<sku, variantId>
+        const skuToVariant = await fetchVariantIdsBySkus(t.companyId, uniqueSkus); // Map<sku, variantId>
         const toUpdate: Array<{ id: string; variantId: string }> = [];
         for (const rec of linesMissingVariant) {
           const vId = skuToVariant.get(rec.sku);
@@ -243,7 +245,7 @@ export async function GET(req: Request) {
         const BACKFILL_COST_LIMIT = 200;
         const toFetch = missingVariantIds.slice(0, BACKFILL_COST_LIMIT);
         try {
-          const fetchedRaw = await fetchVariantUnitCosts(toFetch);
+          const fetchedRaw = await fetchVariantUnitCosts(t.companyId, toFetch);
           const fetched = normalizeCostMap(fetchedRaw);
           for (const [variantId, entry] of fetched.entries()) {
             const unitCostNum = Number(entry.unitCost);

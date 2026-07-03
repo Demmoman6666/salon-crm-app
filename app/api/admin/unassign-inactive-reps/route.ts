@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -7,6 +8,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -84,7 +86,7 @@ export async function GET(req: Request) {
 
       if (syncShopify && c.shopifyCustomerId) {
         try {
-          await pushCustomerToShopifyById(c.id);
+          await pushCustomerToShopifyById(t.companyId, c.id);
           shopifyUpdated++;
         } catch (shopifyErr: any) {
           shopifyFailed++;

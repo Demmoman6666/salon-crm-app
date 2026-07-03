@@ -1,5 +1,6 @@
 "use server";
 
+import { requireTenant } from "@/lib/tenant";
 import { redirect } from "next/navigation";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
@@ -46,11 +47,12 @@ export async function savePaymentTerms(customerId: string, formData: FormData) {
 }
 
 export async function createPaymentLink(customerId: string, shopifyCustomerId: string | null, formData: FormData) {
+  const t = await requireTenant();
   const draftId = String(formData.get("draftId") || "");
   if (!draftId) throw new Error("Missing draftId");
   const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
   if (!stripeSecret) throw new Error("Missing STRIPE_SECRET_KEY");
-  const resp = await shopifyRest(`/draft_orders/${draftId}.json`, { method: "GET" });
+  const resp = await shopifyRest(t.companyId, `/draft_orders/${draftId}.json`, { method: "GET" });
   if (!resp.ok) throw new Error(`Failed to load draft: ${resp.status}`);
   const draft = (await resp.json())?.draft_order as any;
   const draftLines = (draft?.line_items || []) as any[];

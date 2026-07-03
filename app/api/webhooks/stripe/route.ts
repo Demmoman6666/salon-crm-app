@@ -39,6 +39,8 @@ async function disablePaymentLinkIfPresent(session: Stripe.Checkout.Session) {
 async function createPaidShopifyOrderFromSession(session: Stripe.Checkout.Session) {
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: "2023-10-16" });
 
+  const companyId = String(session.metadata?.companyId || "");
+  if (!companyId) throw new Error("Missing companyId in session metadata");
   const crmCustomerId = String(session.metadata?.crmCustomerId || "");
   const shopifyCustomerId = String(session.metadata?.shopifyCustomerId || "");
   if (!crmCustomerId || !shopifyCustomerId)
@@ -106,7 +108,7 @@ async function createPaidShopifyOrderFromSession(session: Stripe.Checkout.Sessio
     },
   };
 
-  const resp = await shopifyRest(`/orders.json`, {
+  const resp = await shopifyRest(companyId, `/orders.json`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -118,7 +120,7 @@ async function createPaidShopifyOrderFromSession(session: Stripe.Checkout.Sessio
   const order = json?.order;
 
   try {
-    if (order) await upsertOrderFromShopify(order, process.env.SHOPIFY_SHOP_DOMAIN || "");
+    if (order) await upsertOrderFromShopify(companyId, order);
   } catch (e) {
     console.warn("CRM upsert warning:", e);
   }
@@ -176,8 +178,7 @@ async function completeDraftAndMarkPaid(session: Stripe.Checkout.Session) {
 
   // 1) Complete the draft (creates an Order in "pending")
   let shopifyOrderId: number | null = null;
-  const completeRes = await shopifyRest(
-    `/draft_orders/${draftId}/complete.json?payment_pending=true`,
+  const completeRes = await shopifyRest(companyId, `/draft_orders/${draftId}/complete.json?payment_pending=true`,
     { method: "PUT" }
   );
 
@@ -185,7 +186,7 @@ async function completeDraftAndMarkPaid(session: Stripe.Checkout.Session) {
     const text = await completeRes.text().catch(() => "");
     // If already completed, try to read order_id from the draft
     try {
-      const draftRes = await shopifyRest(`/draft_orders/${draftId}.json`, { method: "GET" });
+      const draftRes = await shopifyRest(companyId, `/draft_orders/${draftId}.json`, { method: "GET" });
       if (draftRes.ok) {
         const djson = await draftRes.json().catch(() => null);
         const draft = djson?.draft_order;
@@ -231,7 +232,7 @@ async function completeDraftAndMarkPaid(session: Stripe.Checkout.Session) {
   }
 
   // 3) Annotate (best effort)
-  await shopifyRest(`/orders/${shopifyOrderId}.json`, {
+  await shopifyRest(companyId, `/orders/${shopifyOrderId}.json`, {
     method: "PUT",
     body: JSON.stringify({
       order: {
@@ -249,12 +250,12 @@ async function completeDraftAndMarkPaid(session: Stripe.Checkout.Session) {
   }).catch(() => {});
 
   // 4) Mirror into CRM
-  const fresh = await shopifyRest(`/orders/${shopifyOrderId}.json`, { method: "GET" });
+  const fresh = await shopifyRest(companyId, `/orders/${shopifyOrderId}.json`, { method: "GET" });
   if (fresh.ok) {
     const j = await fresh.json().catch(() => null);
     const order = j?.order;
     try {
-      if (order) await upsertOrderFromShopify(order, process.env.SHOPIFY_SHOP_DOMAIN || "");
+      if (order) await upsertOrderFromShopify(companyId, order);
     } catch (e) {
       console.warn("CRM upsert warning:", e);
     }

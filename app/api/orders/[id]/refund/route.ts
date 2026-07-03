@@ -1,4 +1,5 @@
 // app/api/orders/[id]/refund/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
@@ -67,6 +68,7 @@ function pickParentTransaction(transactions: any[]): { id: string | null; gatewa
 /* ---------------- main handler ---------------- */
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
+  const t = await requireTenant();
   const debug = new URL(req.url).searchParams.get("debug") === "1";
   const debugOut: any = { steps: [] };
 
@@ -140,7 +142,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     const shopifyOrderId = crmOrder.shopifyOrderId;
 
     // Fetch Shopify order & transactions (need currency + parent tx)
-    const shopOrderRes = await shopifyRest(`/orders/${shopifyOrderId}.json`, { method: "GET" });
+    const shopOrderRes = await shopifyRest(t.companyId, `/orders/${shopifyOrderId}.json`, { method: "GET" });
     if (!shopOrderRes.ok) {
       const text = await shopOrderRes.text().catch(() => "");
       return NextResponse.json({ error: `Fetch Shopify order failed: ${shopOrderRes.status} ${text}` }, { status: 502 });
@@ -149,7 +151,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     const shopOrder = shopOrderJson?.order;
     const shopCurrency = String(shopOrder?.currency || "GBP").toUpperCase();
 
-    const txRes = await shopifyRest(`/orders/${shopifyOrderId}/transactions.json`, { method: "GET" });
+    const txRes = await shopifyRest(t.companyId, `/orders/${shopifyOrderId}/transactions.json`, { method: "GET" });
     const txJson = txRes.ok ? await txRes.json() : { transactions: [] };
     const { id: parentTxnId, gateway: lastGateway } = pickParentTransaction(txJson?.transactions || []);
     const sessionId = extractStripeSessionIdFromShopify(shopOrder);
@@ -172,7 +174,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         refund_line_items,
       },
     };
-    const calcRes = await shopifyRest(`/orders/${shopifyOrderId}/refunds/calculate.json`, {
+    const calcRes = await shopifyRest(t.companyId, `/orders/${shopifyOrderId}/refunds/calculate.json`, {
       method: "POST",
       body: JSON.stringify(calcBody),
     });
@@ -248,7 +250,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
             },
           };
 
-          const createStripe = await shopifyRest(`/orders/${shopifyOrderId}/refunds.json`, {
+          const createStripe = await shopifyRest(t.companyId, `/orders/${shopifyOrderId}/refunds.json`, {
             method: "POST",
             body: JSON.stringify(bodyStripe),
           });
@@ -272,7 +274,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
                 ],
               },
             };
-            const createCredit = await shopifyRest(`/orders/${shopifyOrderId}/refunds.json`, {
+            const createCredit = await shopifyRest(t.companyId, `/orders/${shopifyOrderId}/refunds.json`, {
               method: "POST",
               body: JSON.stringify(bodyCredit),
             });
@@ -319,7 +321,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       },
     };
 
-    const createCredit = await shopifyRest(`/orders/${shopifyOrderId}/refunds.json`, {
+    const createCredit = await shopifyRest(t.companyId, `/orders/${shopifyOrderId}/refunds.json`, {
       method: "POST",
       body: JSON.stringify(bodyCredit),
     });
@@ -347,10 +349,10 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
 async function refreshCrmFromShopify(shopifyOrderId: number | string) {
   try {
-    const freshOrderRes = await shopifyRest(`/orders/${shopifyOrderId}.json`, { method: "GET" });
+    const freshOrderRes = await shopifyRest(t.companyId, `/orders/${shopifyOrderId}.json`, { method: "GET" });
     if (freshOrderRes.ok) {
       const fresh = await freshOrderRes.json();
-      if (fresh?.order) await upsertOrderFromShopify(fresh.order, "");
+      if (fresh?.order) await upsertOrderFromShopify(t.companyId, fresh.order, "");
     }
   } catch {
     /* ignore */
@@ -359,5 +361,6 @@ async function refreshCrmFromShopify(shopifyOrderId: number | string) {
 
 /** 405 for GET */
 export async function GET() {
+  const t = await requireTenant();
   return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
 }

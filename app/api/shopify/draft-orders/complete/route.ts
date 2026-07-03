@@ -1,4 +1,5 @@
 // app/api/shopify/draft-orders/complete/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { shopifyRest } from "@/lib/shopify";
 
@@ -6,6 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     // Expect: { draftId: number | string, paymentTermsName?: string }
     const body = await req.json().catch(() => ({} as any));
@@ -26,7 +28,7 @@ export async function POST(req: Request) {
     // 1) Complete the draft as unpaid (payment pending).
     //    Important: Shopify expects the flag in the query string and *no JSON body*.
     const completePath = `/draft_orders/${draftIdNum}/complete.json?payment_pending=true`;
-    const resp = await shopifyRest(completePath, { method: "PUT" });
+    const resp = await shopifyRest(t.companyId, completePath, { method: "PUT" });
 
     if (!resp.ok) {
       const text = await resp.text().catch(() => "");
@@ -89,7 +91,7 @@ export async function POST(req: Request) {
           );
 
         if (willChangeNote || willChangeAttrs) {
-          const upd = await shopifyRest(`/orders/${orderId}.json`, {
+          const upd = await shopifyRest(t.companyId, `/orders/${orderId}.json`, {
             method: "PUT",
             body: JSON.stringify({
               order: {
@@ -124,5 +126,6 @@ export async function POST(req: Request) {
 
 // Optional: block GET/others
 export async function GET() {
+  const t = await requireTenant();
   return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
 }

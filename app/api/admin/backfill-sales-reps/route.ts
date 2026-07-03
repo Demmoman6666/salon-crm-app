@@ -1,4 +1,5 @@
 // app/api/admin/backfill-sales-reps/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSalesRepForTags, shopifyRest } from "@/lib/shopify";
@@ -20,6 +21,7 @@ export const dynamic = "force-dynamic";
  *   reeval=0|1            when 1, re-evaluate all customers (even those with salesRep already)
  */
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const secret = searchParams.get("secret") || "";
   if (!process.env.BACKFILL_SECRET || secret !== process.env.BACKFILL_SECRET) {
@@ -78,7 +80,7 @@ export async function GET(req: Request) {
   async function fetchTagsFromShopify(shopifyId: string | null): Promise<string[]> {
     if (!shopifyId) return [];
     try {
-      const res = await shopifyRest(`/customers/${shopifyId}.json`, { method: "GET" });
+      const res = await shopifyRest(t.companyId, `/customers/${shopifyId}.json`, { method: "GET" });
       if (!res.ok) return [];
       const json = await res.json();
       const raw = json?.customer?.tags;
@@ -110,7 +112,7 @@ export async function GET(req: Request) {
       continue;
     }
 
-    const mapped = await getSalesRepForTags(tags); // returns a SalesRep.name or null
+    const mapped = await getSalesRepForTags(t.companyId, tags); // returns a SalesRep.name or null
     if (!mapped) {
       skippedNoRep++;
       results.push({ id: c.id, oldRep: c.salesRep, newRep: null, reason: "no-matching-rep" });

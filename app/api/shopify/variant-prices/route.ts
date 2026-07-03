@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { shopifyRest } from "@/lib/shopify";
 
@@ -13,6 +14,7 @@ function toNumericId(v: any): number | null {
 }
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const body = await req.json().catch(() => ({}));
     const rawIds: any[] = Array.isArray(body?.ids) ? body.ids : [];
@@ -30,7 +32,7 @@ export async function POST(req: Request) {
 
     for (const id of ids) {
       try {
-        const res = await shopifyRest(`/variants/${id}.json?fields=id,price,sku,title`, {
+        const res = await shopifyRest(t.companyId, `/variants/${id}.json?fields=id,price,sku,title`, {
           method: "GET",
         });
         if (!res.ok) continue;

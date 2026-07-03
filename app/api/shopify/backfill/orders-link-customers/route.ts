@@ -1,4 +1,5 @@
 // app/api/shopify/backfill/orders-link-customers/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { shopifyRest, upsertCustomerFromShopify } from "@/lib/shopify";
@@ -12,6 +13,7 @@ export const dynamic = "force-dynamic";
  * extracts order.customer.id (+ customer object), and links the order.
  */
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const url = new URL(req.url);
   const limit = Math.max(1, Math.min(200, Number(url.searchParams.get("limit")) || 50));
   const rpm   = Math.max(30, Math.min(240, Number(url.searchParams.get("rpm")) || 120));
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
   for (const o of candidates) {
     processed++;
     try {
-      const res = await shopifyRest(`/orders/${o.shopifyOrderId}.json?status=any`, { method: "GET" });
+      const res = await shopifyRest(t.companyId, `/orders/${o.shopifyOrderId}.json?status=any`, { method: "GET" });
       if (!res.ok) {
         skipped++;
         await new Promise(r => setTimeout(r, delay));
@@ -60,7 +62,7 @@ export async function POST(req: Request) {
       }
 
       // Ensure a CRM customer exists/updated for this Shopify customer
-      await upsertCustomerFromShopify(sCust, ""); // shop domain unused in your impl
+      await upsertCustomerFromShopify(t.companyId, sCust, ""); // shop domain unused in your impl
 
       // Find the CRM customer
       const crmCust = await prisma.customer.findFirst({
@@ -99,5 +101,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const t = await requireTenant();
   return NextResponse.json({ ok: true, hint: "POST this endpoint to backfill missing order→customer links." });
 }

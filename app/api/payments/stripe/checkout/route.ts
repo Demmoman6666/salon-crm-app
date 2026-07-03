@@ -1,4 +1,5 @@
 // app/api/payments/stripe/checkout/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
@@ -71,7 +72,7 @@ async function fetchVariantPricing(variantIds: string[]) {
 
 /** Fetch a Shopify draft order (REST) */
 async function loadDraft(draftId: string | number) {
-  const res = await shopifyRest(`/draft_orders/${draftId}.json`, { method: "GET" });
+  const res = await shopifyRest(t.companyId, `/draft_orders/${draftId}.json`, { method: "GET" });
   const text = await res.text().catch(() => "");
   if (!res.ok) throw new Error(`Failed to fetch draft: ${res.status} ${text}`);
   const json = JSON.parse(text);
@@ -101,6 +102,7 @@ async function createCheckoutFromDraft(req: Request, draftId: string | number) {
       product_data: {
         name: `${li?.title ?? "Item"}${li?.variant_title ? ` — ${li.variant_title}` : ""}`,
         metadata: {
+        companyId: t.companyId,
           variantId: li?.variant_id ? String(li.variant_id) : "",
           crmDraftOrderId: String(draftId),
         },
@@ -134,6 +136,7 @@ async function createCheckoutFromDraft(req: Request, draftId: string | number) {
 
 /** GET — allow /api/payments/stripe/checkout?draftId=123 to open Stripe directly */
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const url = new URL(req.url);
   const draftId = url.searchParams.get("draftId");
   if (!draftId) return NextResponse.json({ error: "Missing draftId" }, { status: 400 });
@@ -150,6 +153,7 @@ export async function GET(req: Request) {
  *  (B) { customerId, lines } -> legacy flow: price from Shopify and build directly
  */
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
     if (!stripeSecret) {
@@ -202,7 +206,8 @@ export async function POST(req: Request) {
           unit_amount: Math.round(inc * 100),
           product_data: {
             name: `${v.productTitle} — ${v.variantTitle}`,
-            metadata: { variantId: String(li.variantId) },
+            metadata: {
+        companyId: t.companyId, variantId: String(li.variantId) },
           },
         },
       };

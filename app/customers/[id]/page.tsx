@@ -1,4 +1,5 @@
 // @refreshed
+import { requireTenant } from "@/lib/tenant";
 import Link from "next/link";
 import AiBriefPanel from "./AiBriefPanel";
 import { notFound } from "next/navigation";
@@ -117,6 +118,8 @@ export default async function CustomerPage({ params, searchParams }: PageProps) 
 
   const customer = await prisma.customer.findUnique({ where: { id: params.id } });
   if (!customer) return notFound();
+  const t = await requireTenant();
+  if ((customer as any).companyId && (customer as any).companyId !== t.companyId) return notFound();
 
   const orders = await prisma.order.findMany({
     where: { customerId: customer.id },
@@ -128,7 +131,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps) 
   const shopifyById = new Map<number, any>();
   if (idCandidates.length) {
     try {
-      const res = await shopifyRest(`/orders.json?ids=${encodeURIComponent(idCandidates.join(","))}&status=any&fields=id,financial_status,fulfillment_status,created_at,processed_at`, { method: "GET" });
+      const res = await shopifyRest(t.companyId, `/orders.json?ids=${encodeURIComponent(idCandidates.join(","))}&status=any&fields=id,financial_status,fulfillment_status,created_at,processed_at`, { method: "GET" });
       if (res.ok) { const json = await res.json(); for (const o of json?.orders||[]) shopifyById.set(Number(o.id), o); }
     } catch {}
   }
@@ -137,7 +140,7 @@ export default async function CustomerPage({ params, searchParams }: PageProps) 
   const shopifyCustomerId = (customer as any).shopifyCustomerId;
   if (shopifyCustomerId) {
     try {
-      const res = await shopifyRest(`/draft_orders.json?status=open&limit=50`, { method: "GET" });
+      const res = await shopifyRest(t.companyId, `/draft_orders.json?status=open&limit=50`, { method: "GET" });
       if (res.ok) {
         const json = await res.json();
         const scid = Number(shopifyCustomerId);

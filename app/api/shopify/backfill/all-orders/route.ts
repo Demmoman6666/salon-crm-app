@@ -1,4 +1,5 @@
 // app/api/shopify/backfill/all-orders/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { shopifyRest, upsertCustomerFromShopify, upsertOrderFromShopify } from "@/lib/shopify";
 
@@ -44,6 +45,7 @@ function getNextPageInfo(linkHeader: string | null): string | null {
  *   { imported: number, nextPageInfo: string|null }
  */
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const limitRaw = Number(searchParams.get("limit") || 250);
   const limit = Math.min(Math.max(limitRaw, 1), 250);
@@ -71,7 +73,7 @@ export async function POST(req: Request) {
     url = `/orders.json?${qp.toString()}`;
   }
 
-  const res = await shopifyRest(url, { method: "GET" });
+  const res = await shopifyRest(t.companyId, url, { method: "GET" });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     return bad(`Shopify GET ${url} failed: ${res.status} ${text}`, 502);
@@ -90,9 +92,9 @@ export async function POST(req: Request) {
   for (const ord of orders) {
     try {
       if (ord.customer) {
-        await upsertCustomerFromShopify(ord.customer, ord?.shop_domain || "");
+        await upsertCustomerFromShopify(t.companyId, ord.customer, ord?.shop_domain || "");
       }
-      await upsertOrderFromShopify(ord, ord?.shop_domain || "");
+      await upsertOrderFromShopify(t.companyId, ord, ord?.shop_domain || "");
       imported++;
     } catch (e: any) {
       console.error("[backfill-all-orders] upsert failed:", e?.message || e);

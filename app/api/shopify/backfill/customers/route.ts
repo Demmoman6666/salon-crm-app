@@ -1,10 +1,12 @@
 // app/api/shopify/backfill/customers/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { shopifyRest, upsertCustomerFromShopify } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.SYNC_ADMIN_TOKEN}`) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -14,11 +16,11 @@ export async function POST(req: Request) {
   const pageInfo = url.searchParams.get("page_info");
 
   const query = pageInfo ? `?limit=250&page_info=${encodeURIComponent(pageInfo)}` : "?limit=250";
-  const res = await shopifyRest(`/customers.json${query}`, { method: "GET" });
+  const res = await shopifyRest(t.companyId, `/customers.json${query}`, { method: "GET" });
   const json = await res.json();
 
   for (const c of json.customers || []) {
-    await upsertCustomerFromShopify(c, process.env.SHOPIFY_SHOP_DOMAIN!);
+    await upsertCustomerFromShopify(t.companyId, c, process.env.SHOPIFY_SHOP_DOMAIN!);
   }
 
   // Relay pagination cursor (Link header)

@@ -1,4 +1,5 @@
 // app/api/shopify/draft-orders/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { shopifyRest } from "@/lib/shopify";
@@ -84,7 +85,7 @@ async function fetchTermsTemplates(): Promise<Array<{ id: string; name: string; 
       }
     }
   `;
-  const { ok, json, status, text } = await shopifyGraphQL(q);
+  const { ok, json, status, text } = await shopifyGraphQL(t.companyId, q);
   if (!ok || json?.errors) {
     throw new Error(`Failed to fetch paymentTermsTemplates (${status}): ${json?.errors?.[0]?.message || text}`);
   }
@@ -126,6 +127,7 @@ function buildPaymentTermsInput(
 }
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const body = await req.json().catch(() => ({}));
     const crmCustomerId: string | undefined = body.customerId ?? body.crmCustomerId ?? body.customer_id;
@@ -214,7 +216,7 @@ export async function POST(req: Request) {
       }
     `;
 
-    const { ok, json, status, text } = await shopifyGraphQL(mutate, { input: draftInput });
+    const { ok, json, status, text } = await shopifyGraphQL(t.companyId, mutate, { input: draftInput });
     if (!ok || json?.errors) {
       return NextResponse.json(
         { error: `Shopify draft create (GraphQL) error`, raw: json?.errors || text },
@@ -257,5 +259,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const t = await requireTenant();
   return NextResponse.json({ error: "Method Not Allowed" }, { status: 405 });
 }

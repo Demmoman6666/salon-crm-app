@@ -1,4 +1,5 @@
 // app/api/payments/stripe/refund/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { shopifyRest } from "@/lib/shopify";
@@ -45,7 +46,7 @@ async function resolvePaymentIntentId(
 
   // 3) From Shopify note_attributes on the order
   if (input.shopifyOrderId) {
-    const res = await shopifyRest(`/orders/${input.shopifyOrderId}.json`, { method: "GET" });
+    const res = await shopifyRest(t.companyId, `/orders/${input.shopifyOrderId}.json`, { method: "GET" });
     const json = await res.json().catch(() => ({}));
     const attrs: Array<{ name?: string; value?: string }> = json?.order?.note_attributes || [];
     const hit =
@@ -59,6 +60,7 @@ async function resolvePaymentIntentId(
 }
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
     if (!stripeSecret) {

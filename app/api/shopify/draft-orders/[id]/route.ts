@@ -1,4 +1,5 @@
 // app/api/shopify/draft-orders/[id]/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { shopifyRest } from "@/lib/shopify";
 
@@ -6,9 +7,10 @@ export const dynamic = "force-dynamic";
 type Params = { params: { id: string } };
 
 export async function GET(_: Request, { params }: Params) {
+  const t = await requireTenant();
   const idNum = Number(params.id);
   if (!Number.isFinite(idNum)) return NextResponse.json({ error: "Bad id" }, { status: 400 });
-  const resp = await shopifyRest(`/draft_orders/${idNum}.json`, {
+  const resp = await shopifyRest(t.companyId, `/draft_orders/${idNum}.json`, {
     method: "GET",
     headers: { Accept: "application/json" },
   });

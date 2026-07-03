@@ -1,4 +1,5 @@
 // app/api/reports/company-overview/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { fetchVariantUnitCosts } from "@/lib/shopify";
@@ -91,6 +92,7 @@ function repFromCustomer(c?: { salesRepId: string | null; salesRep: string | nul
 
 /* ----------------- route ----------------- */
 export async function GET(req: Request) {
+  const t = await requireTenant();
   try {
     const { searchParams } = new URL(req.url);
     const fromStr = searchParams.get("from");
@@ -175,7 +177,7 @@ export async function GET(req: Request) {
         const missing = allVariantIds.filter((v) => !costMap.has(v)).slice(0, 200);
         if (missing.length) {
           try {
-            const fetched = await fetchVariantUnitCosts(missing);
+            const fetched = await fetchVariantUnitCosts(t.companyId, missing);
             for (const [vid, amt] of Object.entries(fetched || {})) {
               if (amt != null && Number.isFinite(amt)) costMap.set(String(vid), Number(amt));
             }

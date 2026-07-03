@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { requireShopifyEnv, shopifyRest } from "@/lib/shopify";
 
@@ -23,7 +24,7 @@ async function fetchAll(pathBase: "/custom_collections.json" | "/smart_collectio
     const path = pageInfo
       ? `${pathBase}?${new URLSearchParams({ limit: "250", page_info: pageInfo }).toString()}`
       : `${pathBase}?${new URLSearchParams({ limit: "250" }).toString()}`;
-    const res = await shopifyRest(path, { method: "GET" });
+    const res = await shopifyRest(t.companyId, path, { method: "GET" });
     if (!res.ok) throw new Error(`Shopify ${pathBase} failed: ${res.status}`);
     const json = await res.json();
     out.push(...(json?.custom_collections ?? json?.smart_collections ?? []));
@@ -35,6 +36,7 @@ async function fetchAll(pathBase: "/custom_collections.json" | "/smart_collectio
 }
 
 export async function GET() {
+  const t = await requireTenant();
   try {
     requireShopifyEnv();
     const [customs, smarts] = await Promise.all([

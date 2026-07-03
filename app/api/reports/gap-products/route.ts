@@ -1,4 +1,5 @@
 // app/api/reports/gap-products/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { shopifyRest } from "@/lib/shopify";
@@ -24,7 +25,7 @@ async function fetchShopifyProductsByVendor(vendor: string): Promise<Product[]> 
       : new URLSearchParams({ vendor, limit: "250", fields: "id,title,vendor,variants", status: "active" });
     const url = `/products.json?${qs.toString()}`;
 
-    const r = await shopifyRest(url, { method: "GET" });
+    const r = await shopifyRest(t.companyId, url, { method: "GET" });
     if (!r.ok) {
       const t = await r.text().catch(() => "");
       throw new Error(`Shopify products fetch failed: ${r.status} ${t}`);
@@ -55,6 +56,7 @@ async function fetchShopifyProductsByVendor(vendor: string): Promise<Product[]> 
 }
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const body = await req.json().catch(() => ({}));
     const vendor: string = String(body?.vendor || "").trim();
@@ -165,5 +167,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
+  const t = await requireTenant();
   return NextResponse.json({ error: "Use POST" }, { status: 405 });
 }

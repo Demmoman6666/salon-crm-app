@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { requireShopifyEnv, shopifyRest } from "@/lib/shopify";
 
@@ -5,9 +6,10 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 export async function GET() {
+  const t = await requireTenant();
   try {
     requireShopifyEnv();
-    const res = await shopifyRest(`/locations.json`, { method: "GET" });
+    const res = await shopifyRest(t.companyId, `/locations.json`, { method: "GET" });
     if (!res.ok) throw new Error(`Shopify locations failed: ${res.status}`);
     const json = await res.json();
     const locations = (json?.locations ?? []).map((l: any) => ({

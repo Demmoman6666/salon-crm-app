@@ -1,4 +1,5 @@
 // app/api/shopify/products/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { shopifyGraphql, gidToNumericId, shopifyRest } from "@/lib/shopify";
 
@@ -13,6 +14,7 @@ function qString(term: string) {
 }
 
 export async function GET(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const term = (searchParams.get("q") || "").trim();
   const firstRaw = Number(searchParams.get("first") || 15);
@@ -116,8 +118,7 @@ export async function GET(req: Request) {
     console.error("GraphQL search failed, falling back to REST:", err);
     try {
       // Very basic fallback (title match only)
-      const res = await shopifyRest(
-        `/products.json?title=${encodeURIComponent(term)}&limit=10`,
+      const res = await shopifyRest(t.companyId, `/products.json?title=${encodeURIComponent(term)}&limit=10`,
         { method: "GET" }
       );
       if (!res.ok) {

@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextRequest, NextResponse } from "next/server";
 import { requireShopifyEnv, shopifyRest } from "@/lib/shopify";
 
@@ -15,6 +16,7 @@ function nextPageInfo(linkHeader?: string | null) {
 }
 
 export async function GET(req: NextRequest) {
+  const t = await requireTenant();
   try {
     requireShopifyEnv();
 
@@ -35,7 +37,7 @@ export async function GET(req: NextRequest) {
         const qs = new URLSearchParams({ limit: "250", page_info: pageInfo });
         path = `/products.json?${qs.toString()}`;
       }
-      const res = await shopifyRest(path, { method: "GET" });
+      const res = await shopifyRest(t.companyId, path, { method: "GET" });
       if (!res.ok) throw new Error(`Shopify products failed: ${res.status}`);
       const json = await res.json();
 

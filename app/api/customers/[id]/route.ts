@@ -1,4 +1,5 @@
 // app/api/customers/[id]/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { pushCustomerToShopifyById } from "@/lib/shopify";
@@ -42,6 +43,7 @@ const normEmail = (v: unknown) => {
 
 /* ------------------ GET /api/customers/[id] ------------------ */
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
+  const t = await requireTenant();
   const customer = await prisma.customer.findUnique({
     where: { id: params.id },
     include: {
@@ -56,6 +58,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 
 /* ------------------ PATCH /api/customers/[id] ------------------ */
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
+  const t = await requireTenant();
   try {
     const existing = await prisma.customer.findUnique({ where: { id: params.id } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -100,7 +103,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
     // Push safe subset + ensure rep tag is maintained on Shopify
     try {
-      await pushCustomerToShopifyById(updated.id);
+      await pushCustomerToShopifyById(t.companyId, updated.id);
     } catch (e: any) {
       console.error("pushCustomerToShopifyById error:", e?.message || e);
       // Do not fail the PATCH if Shopify push has a transient error
@@ -115,6 +118,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
 
 /* ------------------ DELETE /api/customers/[id] ------------------ */
 export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const t = await requireTenant();
   try {
     await prisma.callLog.updateMany({ where: { customerId: params.id }, data:  { customerId: null } });
     await prisma.visit.deleteMany({ where: { customerId: params.id } });

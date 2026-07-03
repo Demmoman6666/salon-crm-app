@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { shopifyRest } from "@/lib/shopify";
@@ -10,6 +11,7 @@ type Body = {
 };
 
 export async function POST(req: Request, ctx: { params: { id: string } }) {
+  const t = await requireTenant();
   try {
     const orderId = ctx.params.id;
     const body = (await req.json()) as Body;
@@ -24,7 +26,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     }
 
     // Ask Shopify to calculate totals (VAT/discounts etc.)
-    const resp = await shopifyRest(`/orders/${crmOrder.shopifyOrderId}/refunds/calculate.json`, {
+    const resp = await shopifyRest(t.companyId, `/orders/${crmOrder.shopifyOrderId}/refunds/calculate.json`, {
       method: "POST",
       body: JSON.stringify({
         refund: {

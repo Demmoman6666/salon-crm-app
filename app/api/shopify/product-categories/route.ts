@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { requireShopifyEnv, shopifyGraphql } from "@/lib/shopify";
 
@@ -21,6 +22,7 @@ const QUERY = /* GraphQL */ `
 `;
 
 export async function GET() {
+  const t = await requireTenant();
   try {
     requireShopifyEnv();
 
@@ -29,7 +31,7 @@ export async function GET() {
     let pages = 0;
 
     do {
-      const data: any = await shopifyGraphql(QUERY, { cursor });
+      const data: any = await shopifyGraphql(t.companyId, QUERY, { cursor });
       for (const e of data?.products?.edges ?? []) {
         const node = e?.node?.productCategory?.productTaxonomyNode;
         if (node?.id && node?.fullName) catMap.set(node.id, node.fullName);

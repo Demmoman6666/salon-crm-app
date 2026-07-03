@@ -1,10 +1,12 @@
 // app/api/shopify/backfill/orders/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { shopifyRest, upsertOrderFromShopify } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const auth = req.headers.get("authorization");
   if (auth !== `Bearer ${process.env.SYNC_ADMIN_TOKEN}`) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -18,11 +20,11 @@ export async function POST(req: Request) {
     ? `?limit=250&status=any&order=created_at+asc&page_info=${encodeURIComponent(pageInfo)}`
     : `?limit=250&status=any&order=created_at+asc`;
 
-  const res = await shopifyRest(`/orders.json${query}`, { method: "GET" });
+  const res = await shopifyRest(t.companyId, `/orders.json${query}`, { method: "GET" });
   const json = await res.json();
 
   for (const o of json.orders || []) {
-    await upsertOrderFromShopify(o, process.env.SHOPIFY_SHOP_DOMAIN!);
+    await upsertOrderFromShopify(t.companyId, o, process.env.SHOPIFY_SHOP_DOMAIN!);
   }
 
   const link = res.headers.get("link") || "";

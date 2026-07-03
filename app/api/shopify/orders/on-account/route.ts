@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { shopifyRest } from "@/lib/shopify";
@@ -19,6 +20,7 @@ function num(n: any): number | undefined {
 }
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const body = await req.json().catch(() => ({}));
     const crmCustomerId: string | undefined = body.customerId;
@@ -116,7 +118,7 @@ export async function POST(req: Request) {
       },
     };
 
-    const createDraftRes = await shopifyRest(`/draft_orders.json`, {
+    const createDraftRes = await shopifyRest(t.companyId, `/draft_orders.json`, {
       method: "POST",
       body: JSON.stringify(draftPayload),
     });
@@ -130,7 +132,7 @@ export async function POST(req: Request) {
     }
 
     // Complete as payment pending (creates the real Order as UNPAID)
-    const completeRes = await shopifyRest(`/draft_orders/${draft.id}/complete.json?payment_pending=true`, {
+    const completeRes = await shopifyRest(t.companyId, `/draft_orders/${draft.id}/complete.json?payment_pending=true`, {
       method: "PUT",
     });
     if (!completeRes.ok) {

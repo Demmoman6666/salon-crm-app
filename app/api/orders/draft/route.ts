@@ -1,4 +1,5 @@
 // app/api/orders/draft/route.ts
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { shopifyRest, pushCustomerToShopifyById, SHOPIFY_API_VERSION } from "@/lib/shopify";
@@ -34,6 +35,7 @@ function normalizeTags(input?: string | string[] | null): string | undefined {
 }
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const body = (await req.json().catch(() => ({}))) as PostBody;
     const { customerId, lines } = body || ({} as any);
@@ -52,7 +54,7 @@ export async function POST(req: Request) {
     // Ensure customer exists in Shopify
     let shopifyCustomerId = crm.shopifyCustomerId || null;
     if (!shopifyCustomerId) {
-      await pushCustomerToShopifyById(crm.id);
+      await pushCustomerToShopifyById(t.companyId, crm.id);
       const updated = await prisma.customer.findUnique({ where: { id: crm.id } });
       shopifyCustomerId = updated?.shopifyCustomerId || null;
     }
@@ -78,7 +80,7 @@ export async function POST(req: Request) {
       },
     };
 
-    const res = await shopifyRest(`/draft_orders.json`, {
+    const res = await shopifyRest(t.companyId, `/draft_orders.json`, {
       method: "POST",
       body: JSON.stringify(payload),
     });

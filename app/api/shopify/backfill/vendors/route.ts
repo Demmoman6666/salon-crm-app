@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { shopifyRest } from "@/lib/shopify";
@@ -13,7 +14,7 @@ async function fetchProductVendor(productId: string): Promise<string | null> {
   if (!productId) return null;
   if (vendorCache.has(productId)) return vendorCache.get(productId)!;
   try {
-    const res = await shopifyRest(`/products/${productId}.json`, { method: "GET" });
+    const res = await shopifyRest(t.companyId, `/products/${productId}.json`, { method: "GET" });
     if (!res.ok) { vendorCache.set(productId, null); return null; }
     const json = await res.json();
     const v = (json?.product?.vendor || "").toString().trim() || null;
@@ -32,6 +33,7 @@ async function fetchProductVendor(productId: string): Promise<string | null> {
  * - Updates all line items of that productId
  */
 export async function POST(req: Request) {
+  const t = await requireTenant();
   const { searchParams } = new URL(req.url);
   const rpm = Math.max(30, Math.min(Number(searchParams.get("rpm") || 120), 240));
   const delayMs = Math.ceil(60000 / rpm);

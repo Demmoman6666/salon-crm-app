@@ -1,3 +1,4 @@
+import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { prisma } from "@/lib/prisma";
@@ -77,6 +78,7 @@ function adminDraftUrl(id: number | null) {
 }
 
 export async function POST(req: Request) {
+  const t = await requireTenant();
   try {
     const stripeSecret = process.env.STRIPE_SECRET_KEY || "";
     if (!stripeSecret) {
@@ -120,7 +122,7 @@ export async function POST(req: Request) {
 
     if (Number.isFinite(incomingDraftId) && incomingDraftId > 0) {
       // Try to use the passed draft, and see if it already has a link stored
-      const res = await shopifyRest(`/draft_orders/${incomingDraftId}.json`, { method: "GET" });
+      const res = await shopifyRest(t.companyId, `/draft_orders/${incomingDraftId}.json`, { method: "GET" });
       if (res.ok) {
         const json = await res.json().catch(() => ({}));
         const draft = json?.draft_order;
@@ -163,7 +165,7 @@ export async function POST(req: Request) {
         },
       };
 
-      const draftRes = await shopifyRest(`/draft_orders.json`, {
+      const draftRes = await shopifyRest(t.companyId, `/draft_orders.json`, {
         method: "POST",
         body: JSON.stringify(draftPayload),
       });
@@ -193,7 +195,8 @@ export async function POST(req: Request) {
           currency: "gbp",
           unit_amount,
           tax_behavior: "inclusive",
-          product_data: { name, metadata: { variantId: String(li.variantId) } },
+          product_data: { name, metadata: {
+        companyId: t.companyId, variantId: String(li.variantId) } },
         });
 
         return { price: price.id, quantity: Number(li.quantity || 1) };
@@ -209,6 +212,7 @@ export async function POST(req: Request) {
         },
       },
       metadata: {
+        companyId: t.companyId,
         crmCustomerId: crm.id,
         shopifyCustomerId: crm.shopifyCustomerId || "",
         crmDraftOrderId: draftId ? String(draftId) : "",
@@ -218,7 +222,7 @@ export async function POST(req: Request) {
 
     // Store the link on the draft so future clicks reuse it (de-dupe)
     if (draftId && link?.url) {
-      await shopifyRest(`/draft_orders/${draftId}.json`, {
+      await shopifyRest(t.companyId, `/draft_orders/${draftId}.json`, {
         method: "PUT",
         body: JSON.stringify({
           draft_order: {
