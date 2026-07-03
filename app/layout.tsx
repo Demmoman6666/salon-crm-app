@@ -3,6 +3,7 @@ import "./globals.css";
 import type { Metadata } from "next";
 import Link from "next/link";
 import SettingsMenu from "@/components/SettingsMenu";
+import ThemeToggle from "@/components/ThemeToggle";
 import BackButton from "@/components/BackButton";
 
 export const metadata: Metadata = {
@@ -46,6 +47,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="FieldCRM" />
         <meta name="theme-color" content="#ffffff" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('fieldcrm-theme')||'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}`,
+          }}
+        />
       </head>
 
       <body>
@@ -93,8 +99,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </span>
             </Link>
 
-            {/* Right: Settings */}
-            <div style={{ justifySelf: "end" }}>
+            {/* Right: Theme toggle + Settings */}
+            <div style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 8 }}>
+              <ThemeToggle />
               <SettingsMenu />
             </div>
           </div>

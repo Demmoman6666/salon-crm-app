@@ -266,23 +266,41 @@ function SettingsInner() {
     return <section className="card"><h1>Settings</h1><p className="small">Loading…</p></section>;
   }
 
+  const navItems: { key: typeof tab; label: string; adminOnly?: boolean; icon: JSX.Element }[] = [
+    { key: "account", label: "Account", icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    ) },
+    { key: "reps", label: "Sales Reps", adminOnly: true, icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    ) },
+    { key: "admin", label: "Admin", adminOnly: true, icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    ) },
+    { key: "tools", label: "Tools", adminOnly: true, icon: (
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+    ) },
+  ];
+
   return (
-    <div className="grid" style={{ gap: 16 }}>
-      <section className="card">
-        <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
-          <h1>Settings</h1>
-          <div className="row" style={{ gap: 6 }}>
-            <button className={tab === "account" ? "chip primary" : "chip"} onClick={() => setTab("account")}>Account</button>
-            {isAdmin && (
-              <>
-                <button className={tab === "reps" ? "chip primary" : "chip"} onClick={() => setTab("reps")}>Sales Reps</button>
-                <button className={tab === "admin" ? "chip primary" : "chip"} onClick={() => setTab("admin")}>Admin</button>
-                <button className={tab === "tools" ? "chip primary" : "chip"} onClick={() => setTab("tools")}>Tools</button>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
+    <div>
+      <h1 style={{ marginBottom: 16 }}>Settings</h1>
+      <div className="settings-shell">
+        <nav className="settings-nav">
+          {navItems.map((it) =>
+            (!it.adminOnly || isAdmin) ? (
+              <button
+                key={it.key}
+                className={tab === it.key ? "active" : ""}
+                onClick={() => setTab(it.key)}
+              >
+                {it.icon}
+                {it.label}
+              </button>
+            ) : null
+          )}
+        </nav>
+
+        <div className="grid" style={{ gap: 16 }}>
 
       {/* ---- Account ---- */}
       {tab === "account" && (
@@ -588,6 +606,8 @@ function SettingsInner() {
         </section>
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }
