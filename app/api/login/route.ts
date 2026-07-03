@@ -1,5 +1,6 @@
 // app/api/login/route.ts
 import { NextResponse, NextRequest } from "next/server";
+import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -57,25 +58,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing credentials" }, { status: 400 });
     }
 
-    // Verify user in Postgres using pgcrypto's `crypt`
-    // (requires CREATE EXTENSION IF NOT EXISTS pgcrypto;)
-    const rows = await prisma.$queryRaw<
-      { id: string; fullName: string; email: string; role: string; isActive: boolean }[]
-    >`
-      SELECT "id","fullName","email","role","isActive"
-      FROM "User"
-      WHERE lower(trim("email")) = ${email}
-        AND "isActive" = true
-        AND "passwordHash" = crypt(${password}, "passwordHash")
-      LIMIT 1;
-    `;
+    // Look up the user, then verify the password with bcrypt
+    const dbUser = await prisma.user.findFirst({
+      where: { email, isActive: true },
+      select: { id: true, fullName: true, email: true, role: true, isActive: true, passwordHash: true },
+    });
 
-    if (!rows.length) {
-      // either no such email (after trim/lower) or password mismatch
+    if (!dbUser || !dbUser.passwordHash) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const user = rows[0];
+    const passwordOk = await bcrypt.compare(String(password), dbUser.passwordHash);
+    if (!passwordOk) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const user = dbUser;
 
     // Create a short self-signed session token (HMAC, same scheme as middleware)
     const exp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 30; // 30 days

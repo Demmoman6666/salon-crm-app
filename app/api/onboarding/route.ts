@@ -2,15 +2,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { createSessionToken } from "@/lib/auth";
-import crypto from "crypto";
+import bcrypt from "bcryptjs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 function hashPassword(pw: string) {
-  const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.scryptSync(pw, salt, 64).toString("hex");
-  return `${salt}:${hash}`;
+  return bcrypt.hashSync(pw, 10);
 }
 
 export async function POST(req: Request) {
