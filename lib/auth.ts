@@ -15,15 +15,17 @@ const LEGACY_EMAIL_COOKIE = "sbp_email";
 type TokenPayload = { userId: string; exp: number };
 
 // ----- token helpers (Node HMAC; middleware mirrors with WebCrypto) -----
-function sign(payloadB64: string) {
+function signBytes(payloadBytes: Buffer) {
   const secret = process.env.AUTH_SECRET || "dev-insecure-secret-change-me";
-  return crypto.createHmac("sha256", secret).update(payloadB64).digest("base64url");
+  // HMAC over the RAW payload bytes (matches /api/login and middleware)
+  return crypto.createHmac("sha256", secret).update(payloadBytes).digest("base64url");
 }
 
 export function createSessionToken(userId: string, maxAgeSec = 60 * 60 * 24 * 30) {
   const payload: TokenPayload = { userId, exp: Math.floor(Date.now() / 1000) + maxAgeSec };
-  const p = Buffer.from(JSON.stringify(payload)).toString("base64url");
-  const sig = sign(p);
+  const payloadBytes = Buffer.from(JSON.stringify(payload));
+  const p = payloadBytes.toString("base64url");
+  const sig = signBytes(payloadBytes);
   return `${p}.${sig}`;
 }
 
@@ -32,7 +34,8 @@ function verifySessionToken(token?: string | null): TokenPayload | null {
   const parts = token.split(".");
   if (parts.length !== 2) return null;
   const [p, sig] = parts;
-  const expected = sign(p);
+  const payloadBytes = Buffer.from(p, "base64url");
+  const expected = signBytes(payloadBytes);
   if (sig !== expected) return null;
 
   try {
