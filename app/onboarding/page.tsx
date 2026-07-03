@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import ShopifyImport from "@/components/ShopifyImport";
 
 export default function OnboardingPage() {
   const [step, setStep] = useState(1);
@@ -42,13 +43,13 @@ export default function OnboardingPage() {
       .then(r => r.json().then(j => ({ ok: r.ok, j })))
       .then(({ ok, j }) => {
         if (!ok) throw new Error(j.error || "Setup failed");
-        window.location.href = "/";
+        setStep(6);
       })
       .catch((e: any) => setError(e.message))
       .finally(() => setSaving(false));
   }
 
-  const steps = ["Your company", "Your account", "Your brands", "Your reps", "Done"];
+  const steps = ["Your company", "Your account", "Your brands", "Your reps", "Review", "Import"];
 
   return (
     <div style={{ maxWidth: 560, margin: "40px auto", padding: "0 16px" }}>
@@ -152,7 +153,26 @@ export default function OnboardingPage() {
             <div style={{ display: "flex", gap: 8 }}>
               <button className="btn" onClick={() => setStep(4)}>Back</button>
               <button className="primary" style={{ flex: 1 }} disabled={saving} onClick={finish}>
-                {saving ? "Setting up..." : "Finish Setup"}
+                {saving ? "Setting up..." : "Create Account"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 6 && (
+          <div>
+            <h1 style={{ marginBottom: 4 }}>Import your Shopify data</h1>
+            <p className="small muted" style={{ marginBottom: 16 }}>
+              Bring your existing customers and orders into the CRM now, or skip and do it
+              later from Settings. New orders always sync automatically.
+            </p>
+            <ShopifyImport />
+            <div style={{ display: "flex", gap: 8, marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+              <button className="btn" style={{ flex: 1 }} onClick={() => (window.location.href = "/")}>
+                Skip for now
+              </button>
+              <button className="primary" style={{ flex: 1 }} onClick={() => (window.location.href = "/")}>
+                Go to dashboard
               </button>
             </div>
           </div>

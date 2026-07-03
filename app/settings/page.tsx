@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
+import ShopifyImport from "@/components/ShopifyImport";
 import { useSearchParams } from "next/navigation";
 
 type Me = {
@@ -361,6 +362,11 @@ function SettingsInner() {
       {/* ---- Admin ---- */}
       {tab === "tools" && isAdmin && (
         <div className="grid" style={{ gap: 16 }}>
+          <section className="card">
+            <h2 style={{ marginBottom: 4 }}>Import Shopify Data</h2>
+            <ShopifyImport />
+          </section>
+
           <section className="card">
             <h2 style={{ marginBottom: 4 }}>Unassign Inactive Customers</h2>
             <p className="small muted" style={{ marginBottom: 16 }}>
