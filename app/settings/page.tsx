@@ -69,7 +69,34 @@ function SettingsInner() {
   const [toolPreview, setToolPreview] = useState<any>(null);
   const [toolRunning, setToolRunning] = useState(false);
   const [toolMsg, setToolMsg] = useState<string | null>(null);
+  const [autoPush, setAutoPush] = useState(false);
+  const [autoPushSaving, setAutoPushSaving] = useState(false);
   const [editingRep, setEditingRep] = useState<SalesRep | null>(null);
+
+  // Load company-level settings (auto-push toggle)
+  useEffect(() => {
+    fetch("/api/settings/company", { cache: "no-store" })
+      .then(r => r.json())
+      .then(j => setAutoPush(j?.autoPushCustomers === true))
+      .catch(() => {});
+  }, []);
+
+  async function toggleAutoPush(next: boolean) {
+    setAutoPush(next);
+    setAutoPushSaving(true);
+    try {
+      const r = await fetch("/api/settings/company", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoPushCustomers: next }),
+      });
+      if (!r.ok) throw new Error();
+    } catch {
+      setAutoPush(!next); // revert on failure
+    } finally {
+      setAutoPushSaving(false);
+    }
+  }
   const [newRep, setNewRep] = useState({ name: "", email: "", phone: "", territory: "" });
   const [repMsg, setRepMsg] = useState<string | null>(null);
   const [addingRep, setAddingRep] = useState(false);
@@ -475,6 +502,33 @@ function SettingsInner() {
       )}
 
       {tab === "admin" && isAdmin && (
+        <div className="grid" style={{ gap: 16 }}>
+        <section className="card">
+          <h2 style={{ marginBottom: 4 }}>Shopify Integration</h2>
+          <p className="small muted" style={{ marginBottom: 14 }}>
+            Control how the CRM syncs with your Shopify store.
+          </p>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={autoPush}
+              disabled={autoPushSaving}
+              onChange={(e) => toggleAutoPush(e.target.checked)}
+              style={{ marginTop: 3 }}
+            />
+            <span>
+              <span style={{ fontWeight: 600, display: "block" }}>
+                Auto-push new customers to Shopify
+              </span>
+              <span className="small muted">
+                When on, every customer you create in the CRM is created in Shopify immediately.
+                When off, customers are only pushed to Shopify when you edit them or raise an order
+                — keeping prospects and leads out of your Shopify customer list until they transact.
+              </span>
+            </span>
+          </label>
+        </section>
+
         <section className="card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h2>User Management</h2>
@@ -532,6 +586,7 @@ function SettingsInner() {
             </div>
           )}
         </section>
+        </div>
       )}
     </div>
   );

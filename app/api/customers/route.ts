@@ -2,6 +2,7 @@
 import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { pushCustomerToShopifyById } from "@/lib/shopify";
 
 export const dynamic = "force-dynamic";
 
@@ -158,6 +159,21 @@ export async function POST(req: Request) {
     }
 
     const created = await prisma.customer.create({ data: { ...data, companyId: t.companyId } });
+
+    // Auto-push to Shopify if the company has enabled it in Settings
+    try {
+      const company = await prisma.company.findUnique({
+        where: { id: t.companyId },
+        select: { settings: true },
+      });
+      const autoPush = (company?.settings as any)?.autoPushCustomers === true;
+      if (autoPush) {
+        await pushCustomerToShopifyById(t.companyId, created.id);
+      }
+    } catch (e: any) {
+      // Never fail the create if the Shopify push errors — log and move on
+      console.error("auto-push customer to Shopify failed:", e?.message || e);
+    }
 
     if (isForm) {
       return NextResponse.redirect(new URL(`/customers/${created.id}`, req.url), { status: 303 });
