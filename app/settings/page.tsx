@@ -316,6 +316,22 @@ function SettingsInner() {
             <div className="field"><label>&nbsp;</label><button className="primary" onClick={saveAccount} disabled={saving}>{saving ? "Saving…" : "Save"}</button></div>
           </div>
           {msg && <div className="small muted">{msg}</div>}
+
+          <div style={{ marginTop: 8, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
+            <button
+              className="btn"
+              onClick={async () => {
+                try {
+                  const r = await fetch("/api/auth/logout", { method: "POST" });
+                  if (!r.ok) await fetch("/api/logout", { method: "POST" });
+                } catch {}
+                window.location.href = "/login";
+              }}
+              style={{ color: "var(--red)" }}
+            >
+              Sign out
+            </button>
+          </div>
         </section>
       )}
 
@@ -545,6 +561,17 @@ function SettingsInner() {
               </span>
             </span>
           </label>
+        </section>
+
+        <section className="card">
+          <h2 style={{ marginBottom: 4 }}>Brands &amp; Products</h2>
+          <p className="small muted" style={{ marginBottom: 14 }}>
+            Manage which brands appear in call logs and reports.
+          </p>
+          <div className="row" style={{ gap: 10 }}>
+            <a className="btn" href="/settings/global/stocked-brands">Brand Management</a>
+            <a className="btn" href="/settings/global/competitor-brands">Competitor Brands</a>
+          </div>
         </section>
 
         <section className="card">
