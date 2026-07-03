@@ -172,7 +172,7 @@ export async function POST(req: Request) {
     });
 
     // Fire the SMS
-    const msg = `Salon CRM – secure payment link: ${link.url}`;
+    const msg = `FieldCRM – secure payment link: ${link.url}`;
     await sendTwilioSMS(toNumber, msg);
 
     // Optional: annotate draft for audit

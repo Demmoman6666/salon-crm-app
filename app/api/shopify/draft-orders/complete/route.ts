@@ -64,7 +64,7 @@ export async function POST(req: Request) {
 
         // ---- Notes (human-friendly text) ----
         const existingNoteText: string = typeof order?.note === "string" ? order.note : "";
-        const intro = "Created from SBP CRM";
+        const intro = "Created from FieldCRM";
         const termsLine = paymentTermsName ? `Payment terms (CRM): ${paymentTermsName}` : null;
 
         // Build next note text idempotently

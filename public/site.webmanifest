@@ -1,6 +1,6 @@
 {
-  "name": "Salon Brands Pro CRM",
-  "short_name": "SBP CRM",
+  "name": "FieldCRM",
+  "short_name": "FieldCRM",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

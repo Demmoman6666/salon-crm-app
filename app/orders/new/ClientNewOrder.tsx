@@ -601,7 +601,7 @@ async function payOnAccount() {
     if (!plink) return null;
 
     const message =
-      `Thank you for your Salon CRM order.\n\n` +
+      `Thank you for your order.\n\n` +
       `Your total is ${fmtGBP(totals.inc)}\n\n` +
       `Your payment link is:\n${plink.url}\n\n` +
       `Thank you ☺️`;

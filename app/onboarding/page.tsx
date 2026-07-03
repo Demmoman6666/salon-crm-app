@@ -61,7 +61,7 @@ export default function OnboardingPage() {
 
         {step === 1 && (
           <div>
-            <h1 style={{ marginBottom: 4 }}>Welcome to Salon CRM</h1>
+            <h1 style={{ marginBottom: 4 }}>Welcome to FieldCRM</h1>
             <p className="small muted" style={{ marginBottom: 16 }}>Let&apos;s get your CRM set up. First — what&apos;s your company called?</p>
             <div className="field" style={{ marginBottom: 16 }}>
               <label>Company name</label>

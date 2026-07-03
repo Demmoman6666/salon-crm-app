@@ -192,7 +192,7 @@ export async function POST(req: Request) {
     }
 
     const draftInput: any = {
-      note: "Created from SBP CRM",
+      note: "Created from FieldCRM",
       useCustomerDefaultAddress: true,
       lineItems: line_items.map((li) => ({
         variantId: gid("ProductVariant", li.variant_id),

@@ -6,8 +6,8 @@ import SettingsMenu from "@/components/SettingsMenu";
 import BackButton from "@/components/BackButton";
 
 export const metadata: Metadata = {
-  title: "Salon CRM",
-  description: "CRM for professional hair & beauty distributors.",
+  title: "FieldCRM",
+  description: "Field-sales CRM for B2B distributors on Shopify.",
   // PWA / homescreen
   manifest: "/site.webmanifest",
   themeColor: "#ffffff",
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Salon CRM",
+    title: "FieldCRM",
   },
   icons: {
     // Favicon & PWA icons
@@ -44,7 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/site.webmanifest" />
         {/* iOS hints (duplicates are fine; Metadata also sets these) */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-title" content="Salon CRM" />
+        <meta name="apple-mobile-web-app-title" content="FieldCRM" />
         <meta name="theme-color" content="#ffffff" />
       </head>
 
@@ -85,12 +85,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 alignItems: "center",
               }}
             >
-              <img
-                src="/sbp-logo.png"
-                alt="Salon CRM"
-                className="brand-logo"
-                style={{ height: 84, width: "auto" }}
-              />
+              <span
+                className="brand-wordmark"
+                style={{ fontSize: "1.5rem", fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)" }}
+              >
+                Field<span style={{ color: "var(--pink, #e6007e)" }}>CRM</span>
+              </span>
             </Link>
 
             {/* Right: Settings */}
@@ -112,7 +112,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             className="container"
             style={{ maxWidth: 1100, margin: "0 auto", padding: "0 16px" }}
           >
-            <small>© Salon CRM</small>
+            <small>© FieldCRM</small>
           </div>
         </footer>
       </body>

@@ -105,7 +105,7 @@ export async function POST(req: Request) {
     const draftPayload: any = {
       draft_order: {
         line_items,
-        note: "Created from SBP CRM (Pay on account)",
+        note: "Created from FieldCRM (Pay on account)",
         taxes_included: false, // prices are ex VAT in your flow
         payment_terms,
         ...(customer.customerEmailAddress ? { email: customer.customerEmailAddress } : {}),

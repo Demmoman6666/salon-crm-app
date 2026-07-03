@@ -42,7 +42,7 @@ export default function AiBriefPanel({ customerId, salonName }: { customerId: st
       "pre { white-space: pre-wrap; font-family: Arial, sans-serif; line-height: 1.7; font-size: 0.9rem; }",
       "</style></head><body>",
       "<h1>" + title + "</h1>",
-      "<div class='meta'>Generated: " + date + " | Salon CRM</div>",
+      "<div class='meta'>Generated: " + date + " | FieldCRM</div>",
       "<pre>" + safeBrief + "</pre>",
       "<scr" + "ipt>window.onload = function() { window.print(); }</scr" + "ipt>",
       "</body></html>",
