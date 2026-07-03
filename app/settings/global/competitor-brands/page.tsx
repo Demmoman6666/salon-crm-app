@@ -11,6 +11,31 @@ export default function CompetitorBrandVisibility() {
   const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const [who, setWho] = useState<any>(null);
+  const [newName, setNewName] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  async function addBrand() {
+    const name = newName.trim();
+    if (!name) return;
+    setAdding(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/brands", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || "Failed to add brand");
+      setNewName("");
+      await load();
+    } catch (e: any) {
+      setMsg(e?.message || "Failed to add brand");
+    } finally {
+      setAdding(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -72,6 +97,27 @@ export default function CompetitorBrandVisibility() {
         <div className="row" style={{ gap: 8 }}>
           <button className="btn" onClick={load} disabled={loading}>Refresh</button>
           <a href="/settings" className="btn">Back to Settings</a>
+        </div>
+      </div>
+
+      <div className="card">
+        <h2 style={{ marginBottom: 4 }}>Add a competitor brand</h2>
+        <p className="small muted" style={{ marginBottom: 12 }}>
+          Competitor brands are rivals you want reps to record when logging a call — they aren't pulled from Shopify, you add them here.
+        </p>
+        <div className="row" style={{ gap: 8, alignItems: "flex-end" }}>
+          <div style={{ flex: 1 }}>
+            <label>Brand name</label>
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") addBrand(); }}
+              placeholder="e.g. Wella"
+            />
+          </div>
+          <button className="primary" onClick={addBrand} disabled={adding || !newName.trim()}>
+            {adding ? "Adding…" : "Add brand"}
+          </button>
         </div>
       </div>
 

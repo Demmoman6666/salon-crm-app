@@ -9,6 +9,23 @@ export default function StockedBrandVisibility() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
+  const [syncing, setSyncing] = useState(false);
+
+  async function syncVendors() {
+    setSyncing(true);
+    setMsg(null);
+    try {
+      const res = await fetch("/api/settings/sync-vendors", { method: "POST", credentials: "include" });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(j?.error || "Sync failed");
+      setMsg(`Synced from Shopify: ${j.vendorsFound} vendors found, ${j.added} new added.`);
+      await load();
+    } catch (e: any) {
+      setMsg(e?.message || "Sync failed");
+    } finally {
+      setSyncing(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -64,6 +81,9 @@ export default function StockedBrandVisibility() {
       <div className="card row" style={{ justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <h1>Brand Management</h1>
         <div className="row" style={{ gap: 8 }}>
+          <button className="primary" onClick={syncVendors} disabled={syncing}>
+            {syncing ? "Syncing…" : "Sync vendors from Shopify"}
+          </button>
           <button className="btn" onClick={load} disabled={loading}>Refresh</button>
           <a href="/settings" className="btn">Back to Settings</a>
         </div>
@@ -72,7 +92,7 @@ export default function StockedBrandVisibility() {
       <div className="card">
         <p className="small muted" style={{ marginBottom: 16 }}>
           Control which brands appear in the <b>Call Log</b> and in <b>Reports</b> (gap analysis, vendor scorecard etc).
-          Only tick the brands you currently carry.
+          Click <b>Sync vendors from Shopify</b> to pull in your vendors — they come in unticked, then tick the ones you carry.
         </p>
 
         <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
@@ -83,7 +103,7 @@ export default function StockedBrandVisibility() {
         {loading ? (
           <div className="small muted">Loading…</div>
         ) : rows.length === 0 ? (
-          <div className="small muted">No stocked brands found.</div>
+          <div className="small muted">No brands yet. Click "Sync vendors from Shopify" above to pull in your vendors.</div>
         ) : (
           <div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 120px 120px", gap: 8, padding: "8px 0", borderBottom: "2px solid var(--border)", marginBottom: 8 }}>
