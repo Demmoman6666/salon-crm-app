@@ -102,7 +102,7 @@ async function createCheckoutFromDraft(companyId: string, req: Request, draftId:
       product_data: {
         name: `${li?.title ?? "Item"}${li?.variant_title ? ` — ${li.variant_title}` : ""}`,
         metadata: {
-        companyId: companyId,
+          companyId: companyId,
           variantId: li?.variant_id ? String(li.variant_id) : "",
           crmDraftOrderId: String(draftId),
         },
@@ -191,7 +191,7 @@ export async function POST(req: Request) {
 
     // Secure prices from Shopify (ex VAT)
     const ids = lines.map((l) => String(l.variantId));
-    const catalog = await fetchVariantPricing(companyId, ids);
+    const catalog = await fetchVariantPricing(t.companyId, ids);
 
     // Build Stripe Checkout line items (gross, inc VAT), and attach variantId to product metadata
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = lines.map((li) => {
@@ -206,14 +206,14 @@ export async function POST(req: Request) {
           unit_amount: Math.round(inc * 100),
           product_data: {
             name: `${v.productTitle} — ${v.variantTitle}`,
-            metadata: {
-        companyId: companyId, variantId: String(li.variantId) },
+            metadata: { variantId: String(li.variantId) },
           },
         },
       };
     });
 
     const sharedMeta = {
+      companyId: t.companyId,
       crmCustomerId: crm.id,
       shopifyCustomerId: crm.shopifyCustomerId || "",
       source: "SBP-CRM",

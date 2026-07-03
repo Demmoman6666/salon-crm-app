@@ -1,2 +1,0 @@
-app/api/payments/stripe/checkout/route.ts(194,47): error TS2304: Cannot find name 'companyId'.
-app/api/payments/stripe/checkout/route.ts(210,20): error TS2304: Cannot find name 'companyId'.
