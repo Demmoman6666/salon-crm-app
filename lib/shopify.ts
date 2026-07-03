@@ -1,21 +1,35 @@
-// lib/shopify.ts
+// lib/shopify.ts — MULTI-TENANT
+// Every function that touches the Shopify API or the database takes
+// `companyId` as its FIRST parameter. Credentials come from the Company row.
 import { prisma } from "@/lib/prisma";
 import { resolveStageAfterOrder } from "@/lib/pipeline";
 import crypto from "crypto";
 
-/** ───────────────── Env ───────────────── */
-const RAW_SHOP_DOMAIN = (process.env.SHOPIFY_SHOP_DOMAIN || "").trim();
-const SHOP_DOMAIN = RAW_SHOP_DOMAIN.replace(/^https?:\/\//i, "");
-const SHOP_ADMIN_TOKEN = (process.env.SHOPIFY_ADMIN_ACCESS_TOKEN || "").trim();
-export const SHOPIFY_API_VERSION = (process.env.SHOPIFY_API_VERSION || "2024-07").trim();
-
-// Tag we’ll apply to Draft Orders created via CRM (can be comma-separated for multiple)
+export const SHOPIFY_API_VERSION = (process.env.SHOPIFY_API_VERSION || "2025-01").trim();
 const DEFAULT_DRAFT_TAG = (process.env.SHOPIFY_DRAFT_TAG || "CRM").trim();
 
-const WEBHOOK_SECRET = (process.env.SHOPIFY_WEBHOOK_SECRET || "").trim();
-const ALT_SECRET_1 = (process.env.SHOPIFY_API_SECRET_KEY || "").trim();
-const ALT_SECRET_2 = (process.env.SHOPIFY_CLIENT_SECRET || "").trim();
+// App-level secret (Partner Dashboard) — used for ALL webhook HMACs in a Shopify app
+const APP_API_SECRET = (process.env.SHOPIFY_API_SECRET || "").trim();
 const DISABLE_HMAC = (process.env.SHOPIFY_DISABLE_HMAC || "") === "1";
+
+/** ───────────────── Per-company credentials (60s cache) ───────────────── */
+type Creds = { shopDomain: string; token: string; ts: number };
+const credsCache = new Map<string, Creds>();
+
+async function getCreds(companyId: string): Promise<{ shopDomain: string; token: string }> {
+  const hit = credsCache.get(companyId);
+  if (hit && Date.now() - hit.ts < 60_000) return hit;
+  const c = await prisma.company.findUnique({
+    where: { id: companyId },
+    select: { shopDomain: true, shopifyAccessToken: true, uninstalledAt: true },
+  });
+  if (!c?.shopDomain || !c.shopifyAccessToken || c.uninstalledAt) {
+    throw new Error("Shopify is not connected for this company");
+  }
+  const creds = { shopDomain: c.shopDomain, token: c.shopifyAccessToken, ts: Date.now() };
+  credsCache.set(companyId, creds);
+  return creds;
+}
 
 /** ───────────────── Small utils ───────────────── */
 function toNumber(v: any): number | null {
@@ -33,41 +47,35 @@ function tagsToString(tags: string[]): string {
   return Array.from(new Set(tags.map(t => t.trim()).filter(Boolean))).join(", ");
 }
 
-/** Convert a GraphQL gid (e.g. gid://shopify/Product/123456789) → "123456789" */
 export function gidToNumericId(gid?: string | null): string | null {
   if (!gid || typeof gid !== "string") return null;
   const m = gid.match(/\/(\d+)$/);
   return m ? m[1] : null;
 }
-/** Convert a numeric id to a ProductVariant GID */
 export function numericVariantIdToGid(id: string | number): string {
   return `gid://shopify/ProductVariant/${id}`;
 }
 
-/** ───────────────── REST Admin helper ───────────────── */
-export async function shopifyRest(path: string, init: RequestInit = {}) {
-  if (!SHOP_DOMAIN || !SHOP_ADMIN_TOKEN) {
-    throw new Error("Missing SHOPIFY_SHOP_DOMAIN or SHOPIFY_ADMIN_ACCESS_TOKEN");
-  }
-  const url = `https://${SHOP_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}${path}`;
+/** ───────────────── REST Admin helper (per-company) ───────────────── */
+export async function shopifyRest(companyId: string, path: string, init: RequestInit = {}) {
+  const { shopDomain, token } = await getCreds(companyId);
+  const url = `https://${shopDomain}/admin/api/${SHOPIFY_API_VERSION}${path}`;
   const headers = new Headers(init.headers as any);
-  headers.set("X-Shopify-Access-Token", SHOP_ADMIN_TOKEN);
+  headers.set("X-Shopify-Access-Token", token);
   if (!headers.has("Content-Type")) headers.set("Content-Type", "application/json");
   headers.set("Accept", "application/json");
   return fetch(url, { ...init, headers, cache: "no-store" });
 }
 
-/** ───────────────── GraphQL Admin helper ───────────────── */
-export async function shopifyGraphql<T = any>(query: string, variables?: Record<string, any>): Promise<T> {
-  if (!SHOP_DOMAIN || !SHOP_ADMIN_TOKEN) {
-    throw new Error("Missing SHOPIFY_SHOP_DOMAIN or SHOPIFY_ADMIN_ACCESS_TOKEN");
-  }
-  const url = `https://${SHOP_DOMAIN}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
+/** ───────────────── GraphQL Admin helper (per-company) ───────────────── */
+export async function shopifyGraphql<T = any>(companyId: string, query: string, variables?: Record<string, any>): Promise<T> {
+  const { shopDomain, token } = await getCreds(companyId);
+  const url = `https://${shopDomain}/admin/api/${SHOPIFY_API_VERSION}/graphql.json`;
   const res = await fetch(url, {
     method: "POST",
     cache: "no-store",
     headers: {
-      "X-Shopify-Access-Token": SHOP_ADMIN_TOKEN,
+      "X-Shopify-Access-Token": token,
       "Content-Type": "application/json",
       Accept: "application/json",
     },
@@ -80,55 +88,46 @@ export async function shopifyGraphql<T = any>(query: string, variables?: Record<
   return json.data as T;
 }
 
-/* ➕ Alias export to satisfy imports that use `shopifyGraphQL` (capital QL) */
 export { shopifyGraphql as shopifyGraphQL };
 
-/** ✅ Minimal helper used by API routes to fail fast if env is missing */
+/** Fail fast if app-level env is missing (API key/secret from Partner Dashboard). */
 export function requireShopifyEnv() {
-  if (!SHOP_DOMAIN) throw new Error("Missing SHOPIFY_SHOP_DOMAIN");
-  if (!SHOP_ADMIN_TOKEN) throw new Error("Missing SHOPIFY_ADMIN_ACCESS_TOKEN");
+  if (!process.env.SHOPIFY_API_KEY) throw new Error("Missing SHOPIFY_API_KEY");
+  if (!APP_API_SECRET) throw new Error("Missing SHOPIFY_API_SECRET");
 }
 
-/** ───────────────── HMAC ───────────────── */
-function verifyWithSecret(secret: string, rawBytes: Buffer, hmacHeader: string) {
-  if (!secret) return false;
-  const providedBytes = Buffer.from(hmacHeader, "base64");
-  const digestBytes = crypto.createHmac("sha256", secret).update(rawBytes).digest();
-  try {
-    return providedBytes.length === digestBytes.length && crypto.timingSafeEqual(providedBytes, digestBytes);
-  } catch {
-    return false;
-  }
-}
+/** ───────────────── Webhook HMAC (app secret) ───────────────── */
 export function verifyShopifyHmac(rawBody: ArrayBuffer | Buffer | string, hmacHeader?: string | null) {
   if (DISABLE_HMAC) return true;
-  if (!hmacHeader) return false;
+  if (!hmacHeader || !APP_API_SECRET) return false;
   const bodyBuf =
     typeof rawBody === "string"
       ? Buffer.from(rawBody, "utf8")
       : Buffer.isBuffer(rawBody)
       ? rawBody
       : Buffer.from(rawBody as ArrayBuffer);
-  const secrets = [WEBHOOK_SECRET, ALT_SECRET_1, ALT_SECRET_2].filter(Boolean);
-  for (const s of secrets) if (verifyWithSecret(s, bodyBuf, hmacHeader)) return true;
-  return false;
+  const providedBytes = Buffer.from(hmacHeader, "base64");
+  const digestBytes = crypto.createHmac("sha256", APP_API_SECRET).update(bodyBuf).digest();
+  try {
+    return providedBytes.length === digestBytes.length && crypto.timingSafeEqual(providedBytes, digestBytes);
+  } catch {
+    return false;
+  }
 }
 
-/** ───────────────── Sales Rep mapping ───────────────── */
-export async function getSalesRepForTags(tags: string[]): Promise<string | null> {
+/** ───────────────── Sales Rep mapping (per-company) ───────────────── */
+export async function getSalesRepForTags(companyId: string, tags: string[]): Promise<string | null> {
   if (!tags?.length) return null;
   const norm = tags.map(t => t.trim()).filter(Boolean);
 
-  // 1) Rule table: allows aliases (e.g., “Colin” → “Colin Barber”)
   const rule = await prisma.salesRepTagRule.findFirst({
-    where: { tag: { in: norm } },
+    where: { companyId, tag: { in: norm } },
     include: { salesRep: true },
     orderBy: { createdAt: "asc" },
   });
   if (rule?.salesRep?.name) return rule.salesRep.name;
 
-  // 2) Fallback: direct match to SalesRep.name
-  const reps = await prisma.salesRep.findMany({ select: { name: true } });
+  const reps = await prisma.salesRep.findMany({ where: { companyId }, select: { name: true } });
   const byLower = new Map(reps.map(r => [r.name.toLowerCase(), r.name]));
   for (const t of norm) {
     const hit = byLower.get(t.toLowerCase());
@@ -138,20 +137,19 @@ export async function getSalesRepForTags(tags: string[]): Promise<string | null>
 }
 
 /** ───────────────── Customer fetch / id helpers ───────────────── */
-async function fetchShopifyCustomerById(shopifyId: string): Promise<any | null> {
+async function fetchShopifyCustomerById(companyId: string, shopifyId: string): Promise<any | null> {
   if (!shopifyId) return null;
-  const res = await shopifyRest(`/customers/${shopifyId}.json`, { method: "GET" });
+  const res = await shopifyRest(companyId, `/customers/${shopifyId}.json`, { method: "GET" });
   if (!res.ok) return null;
   const json = await res.json();
   return json?.customer ?? null;
 }
 
-/** Extract numeric Shopify customer id from various payload shapes */
 export function extractShopifyCustomerId(payload: any): string | null {
   if (!payload || typeof payload !== "object") return null;
-  if (payload.customer_id != null) return String(payload.customer_id);               // tag webhooks
-  if (payload.customer?.id != null) return String(payload.customer.id);             // nested
-  if (payload.id != null && typeof payload.id !== "object") return String(payload.id); // direct
+  if (payload.customer_id != null) return String(payload.customer_id);
+  if (payload.customer?.id != null) return String(payload.customer.id);
+  if (payload.id != null && typeof payload.id !== "object") return String(payload.id);
   const gid: string | undefined =
     payload.admin_graphql_api_id || payload.customer?.admin_graphql_api_id;
   if (gid && typeof gid === "string") {
@@ -163,26 +161,26 @@ export function extractShopifyCustomerId(payload: any): string | null {
 
 /** ───────────────── Inbound upserts (Shopify → CRM) ───────────────── */
 type UpsertOpts = {
-  updateOnly?: boolean; // if true, do not create CRM customers when no match found
+  updateOnly?: boolean;
   matchBy?: "shopifyIdOnly" | "shopifyIdOrEmail";
 };
 
 export async function upsertCustomerFromShopifyById(
+  companyId: string,
   shopCustomerId: string,
-  _shopDomain: string,
   opts?: UpsertOpts
 ) {
-  const full = await fetchShopifyCustomerById(shopCustomerId);
+  const full = await fetchShopifyCustomerById(companyId, shopCustomerId);
   if (!full) {
     console.warn(`[WEBHOOK] fetch failed for Shopify customer ${shopCustomerId}`);
     return;
   }
-  await upsertCustomerFromShopify(full, _shopDomain, opts);
+  await upsertCustomerFromShopify(companyId, full, opts);
 }
 
 export async function upsertCustomerFromShopify(
+  companyId: string,
   shop: any,
-  _shopDomain: string,
   opts?: UpsertOpts
 ) {
   const shopifyId = extractShopifyCustomerId(shop);
@@ -193,9 +191,8 @@ export async function upsertCustomerFromShopify(
   const company = addr.company || "";
   const phone = shop.phone || addr.phone || null;
 
-  // If Shopify didn't include tags on this webhook, treat as empty array (we won’t clear CRM tags unless we fetched full record)
   const tags = "tags" in shop ? parseShopifyTags(shop.tags) : [];
-  const repName = await getSalesRepForTags(tags);
+  const repName = await getSalesRepForTags(companyId, tags);
 
   const base = {
     salonName: company || fullName || "Shopify Customer",
@@ -214,10 +211,10 @@ export async function upsertCustomerFromShopify(
   const matchMode = opts?.matchBy ?? "shopifyIdOrEmail";
   let existing: { id: string } | null = null;
   if (shopifyId) {
-    existing = await prisma.customer.findFirst({ where: { shopifyCustomerId: shopifyId } });
+    existing = await prisma.customer.findFirst({ where: { companyId, shopifyCustomerId: shopifyId } });
   }
   if (!existing && matchMode === "shopifyIdOrEmail" && email) {
-    existing = await prisma.customer.findFirst({ where: { customerEmailAddress: email } });
+    existing = await prisma.customer.findFirst({ where: { companyId, customerEmailAddress: email } });
   }
 
   if (existing) {
@@ -230,62 +227,47 @@ export async function upsertCustomerFromShopify(
 
   if (opts?.updateOnly) return;
 
-  const createData: any = { ...base };
+  const createData: any = { ...base, companyId };
   if ("tags" in shop) createData.shopifyTags = tags;
   if (repName) createData.salesRep = repName;
   await prisma.customer.create({ data: createData });
 }
 
 /** Orders (Shopify → CRM) */
-export async function upsertOrderFromShopify(order: any, _shopDomain: string) {
+export async function upsertOrderFromShopify(companyId: string, order: any) {
   const orderId = String(order.id);
   const custShopId = order.customer ? String(order.customer.id) : null;
 
   const linkedCustomer =
-    custShopId ? await prisma.customer.findFirst({ where: { shopifyCustomerId: custShopId } }) : null;
+    custShopId ? await prisma.customer.findFirst({ where: { companyId, shopifyCustomerId: custShopId } }) : null;
 
   const shippingFromSet =
     order?.total_shipping_price_set?.shop_money?.amount ??
     order?.total_shipping_price_set?.presentment_money?.amount ?? null;
   const shipping = toNumber(shippingFromSet) ?? toNumber(order?.shipping_lines?.[0]?.price) ?? null;
 
+  const common = {
+    shopifyOrderNumber: order.order_number ?? null,
+    shopifyName: order.name ?? null,
+    shopifyCustomerId: custShopId ?? null,
+    customerId: linkedCustomer ? linkedCustomer.id : null,
+    processedAt: order.processed_at ? new Date(order.processed_at)
+      : order.created_at ? new Date(order.created_at) : null,
+    currency: order.currency ?? null,
+    financialStatus: order.financial_status ?? null,
+    fulfillmentStatus: order.fulfillment_status ?? null,
+    subtotal: toNumber(order.subtotal_price),
+    total: toNumber(order.total_price),
+    taxes: toNumber(order.total_tax),
+    discounts: toNumber(order.total_discounts),
+    shipping,
+    tags: parseShopifyTags(order.tags),
+  };
+
   const ord = await prisma.order.upsert({
-    where: { shopifyOrderId: orderId },
-    create: {
-      shopifyOrderId: orderId,
-      shopifyOrderNumber: order.order_number ?? null,
-      shopifyName: order.name ?? null,
-      shopifyCustomerId: custShopId ?? null,
-      customerId: linkedCustomer ? linkedCustomer.id : null,
-      processedAt: order.processed_at ? new Date(order.processed_at)
-        : order.created_at ? new Date(order.created_at) : null,
-      currency: order.currency ?? null,
-      financialStatus: order.financial_status ?? null,
-      fulfillmentStatus: order.fulfillment_status ?? null,
-      subtotal: toNumber(order.subtotal_price),
-      total: toNumber(order.total_price),
-      taxes: toNumber(order.total_tax),
-      discounts: toNumber(order.total_discounts),
-      shipping,
-      tags: parseShopifyTags(order.tags),
-    },
-    update: {
-      shopifyOrderNumber: order.order_number ?? null,
-      shopifyName: order.name ?? null,
-      shopifyCustomerId: custShopId ?? null,
-      customerId: linkedCustomer ? linkedCustomer.id : null,
-      processedAt: order.processed_at ? new Date(order.processed_at)
-        : order.created_at ? new Date(order.created_at) : null,
-      currency: order.currency ?? null,
-      financialStatus: order.financial_status ?? null,
-      fulfillmentStatus: order.fulfillment_status ?? null,
-      subtotal: toNumber(order.subtotal_price),
-      total: toNumber(order.total_price),
-      taxes: toNumber(order.total_tax),
-      discounts: toNumber(order.total_discounts),
-      shipping,
-      tags: parseShopifyTags(order.tags),
-    },
+    where: { companyId_shopifyOrderId: { companyId, shopifyOrderId: orderId } },
+    create: { companyId, shopifyOrderId: orderId, ...common },
+    update: { ...common },
   });
 
   // Recreate line items
@@ -295,6 +277,7 @@ export async function upsertOrderFromShopify(order: any, _shopDomain: string) {
     const qty = Number(li.quantity ?? 0);
     const unit = toNumber(li.price);
     return {
+      companyId,
       orderId: ord.id,
       shopifyLineItemId: li.id ? String(li.id) : null,
       productId: li.product_id ? String(li.product_id) : null,
@@ -331,32 +314,31 @@ export async function upsertOrderFromShopify(order: any, _shopDomain: string) {
 }
 
 /** ───────────────── Outbound push (CRM → Shopify) ───────────────── */
-async function tagForSalesRepName(repName: string): Promise<string> {
-  const rep = await prisma.salesRep.findFirst({ where: { name: repName }, select: { id: true, name: true } });
+async function tagForSalesRepName(companyId: string, repName: string): Promise<string> {
+  const rep = await prisma.salesRep.findFirst({ where: { companyId, name: repName }, select: { id: true, name: true } });
   if (!rep) return repName;
-  const rule = await prisma.salesRepTagRule.findFirst({ where: { salesRepId: rep.id }, select: { tag: true } });
+  const rule = await prisma.salesRepTagRule.findFirst({ where: { companyId, salesRepId: rep.id }, select: { tag: true } });
   return (rule?.tag?.trim()) || rep.name;
 }
-async function allRepTagsToStripLower(): Promise<Set<string>> {
+async function allRepTagsToStripLower(companyId: string): Promise<Set<string>> {
   const [rules, reps] = await Promise.all([
-    prisma.salesRepTagRule.findMany({ select: { tag: true } }),
-    prisma.salesRep.findMany({ select: { name: true } }),
+    prisma.salesRepTagRule.findMany({ where: { companyId }, select: { tag: true } }),
+    prisma.salesRep.findMany({ where: { companyId }, select: { name: true } }),
   ]);
   const s = new Set<string>();
   for (const r of rules) if (r.tag) s.add(r.tag.toLowerCase().trim());
   for (const r of reps) if (r.name) s.add(r.name.toLowerCase().trim());
   return s;
 }
-async function fetchShopifyCustomerTags(shopifyId: string): Promise<string[]> {
-  const res = await shopifyRest(`/customers/${shopifyId}.json`, { method: "GET" });
+async function fetchShopifyCustomerTags(companyId: string, shopifyId: string): Promise<string[]> {
+  const res = await shopifyRest(companyId, `/customers/${shopifyId}.json`, { method: "GET" });
   if (!res.ok) return [];
   const json = await res.json();
   return parseShopifyTags(json?.customer?.tags);
 }
 
-/** Keep this export because your /api/customers/[id] route imports it */
-export async function pushCustomerToShopifyById(crmCustomerId: string) {
-  const c = await prisma.customer.findUnique({ where: { id: crmCustomerId } });
+export async function pushCustomerToShopifyById(companyId: string, crmCustomerId: string) {
+  const c = await prisma.customer.findFirst({ where: { id: crmCustomerId, companyId } });
   if (!c) return;
 
   const parts = (c.customerName || "").trim().split(/\s+/);
@@ -375,15 +357,15 @@ export async function pushCustomerToShopifyById(crmCustomerId: string) {
   };
 
   const currentRep = (c.salesRep || "").trim();
-  const repTag = currentRep ? (await tagForSalesRepName(currentRep)) : null;
+  const repTag = currentRep ? (await tagForSalesRepName(companyId, currentRep)) : null;
 
   let existingShopifyId = c.shopifyCustomerId || null;
   let existingTags: string[] = [];
   if (existingShopifyId) {
-    try { existingTags = await fetchShopifyCustomerTags(existingShopifyId); } catch { existingTags = []; }
+    try { existingTags = await fetchShopifyCustomerTags(companyId, existingShopifyId); } catch { existingTags = []; }
   }
 
-  const repUniverse = await allRepTagsToStripLower();
+  const repUniverse = await allRepTagsToStripLower(companyId);
   const kept = existingTags.filter(t => !repUniverse.has(t.toLowerCase().trim()));
   const newTags = repTag ? [...kept, repTag] : kept;
 
@@ -399,7 +381,7 @@ export async function pushCustomerToShopifyById(crmCustomerId: string) {
   };
 
   if (!existingShopifyId) {
-    const res = await shopifyRest(`/customers.json`, { method: "POST", body: JSON.stringify(payload) });
+    const res = await shopifyRest(companyId, `/customers.json`, { method: "POST", body: JSON.stringify(payload) });
     if (!res.ok) throw new Error(`Shopify create failed: ${res.status} ${await res.text().catch(()=>"")}`);
     const json = await res.json();
     const shopifyId = String(json?.customer?.id ?? "");
@@ -414,7 +396,7 @@ export async function pushCustomerToShopifyById(crmCustomerId: string) {
       });
     }
   } else {
-    const res = await shopifyRest(`/customers/${existingShopifyId}.json`, {
+    const res = await shopifyRest(companyId, `/customers/${existingShopifyId}.json`, {
       method: "PUT",
       body: JSON.stringify({ customer: { id: Number(existingShopifyId), ...payload.customer } }),
     });
@@ -430,13 +412,9 @@ export async function pushCustomerToShopifyById(crmCustomerId: string) {
   }
 }
 
-/* ──────────────────────────────────────────────────────────────────
-   Product Search (Admin GraphQL) for “Create Order”
-   - searchShopifyCatalog(term) returns flattened variants + product info
-   - createDraftOrderForCustomer(...) to stage an order in Shopify
-   - fetchVariantUnitCosts(...) to retrieve cost-per-item for variants
-   - fetchLineCostsForOrderPayload(...) to map an *order JSON* to costs
-   ────────────────────────────────────────────────────────────────── */
+/* ────────────────────────────────────────────────────────────────
+   Product Search (Admin GraphQL) for "Create Order"
+   ──────────────────────────────────────────────────────────────── */
 
 export type ShopifySearchVariant = {
   productGid: string;
@@ -455,7 +433,6 @@ export type ShopifySearchVariant = {
   priceAmount: string | null;
   currencyCode: string | null;
 
-  /** ➕ cost fields (if “Cost per item” is set in Shopify) */
   unitCostAmount?: string | null;
   unitCostCurrencyCode?: string | null;
 
@@ -469,7 +446,7 @@ function buildProductQueryString(term: string): string {
   return `title:*${t}* OR sku:*${t}* OR vendor:*${t}*`;
 }
 
-export async function searchShopifyCatalog(term: string, first = 15): Promise<ShopifySearchVariant[]> {
+export async function searchShopifyCatalog(companyId: string, term: string, first = 15): Promise<ShopifySearchVariant[]> {
   const q = buildProductQueryString(term);
   if (!q) return [];
 
@@ -533,7 +510,7 @@ export async function searchShopifyCatalog(term: string, first = 15): Promise<Sh
     };
   };
 
-  const data = await shopifyGraphql<Gx>(query, { q, first });
+  const data = await shopifyGraphql<Gx>(companyId, query, { q, first });
   const out: ShopifySearchVariant[] = [];
   for (const pe of data?.products?.edges || []) {
     const p = pe.node;
@@ -570,13 +547,11 @@ export async function searchShopifyCatalog(term: string, first = 15): Promise<Sh
   return out;
 }
 
-/** Normalize any incoming tags shape to a comma-separated string */
 function normalizeTagsToString(input?: string | string[] | null): string | undefined {
   if (input == null) return undefined;
   if (Array.isArray(input)) return tagsToString(input);
   const s = String(input).trim();
   if (!s) return undefined;
-  // If someone passes a JSON array string like '["A","B"]', parse it
   if (s.startsWith("[") && s.endsWith("]")) {
     try {
       const arr = JSON.parse(s);
@@ -586,28 +561,25 @@ function normalizeTagsToString(input?: string | string[] | null): string | undef
   return s;
 }
 
-/** Create a Draft Order in Shopify for a CRM customer by their id */
 export async function createDraftOrderForCustomer(
+  companyId: string,
   crmCustomerId: string,
   items: Array<{ variantId: string; quantity: number }>,
   note?: string,
   tags?: string | string[],
 ) {
-  // We require a Shopify customer id on the CRM record
-  const customer = await prisma.customer.findUnique({
-    where: { id: crmCustomerId },
+  const customer = await prisma.customer.findFirst({
+    where: { id: crmCustomerId, companyId },
     select: { shopifyCustomerId: true, customerEmailAddress: true, salonName: true, customerName: true },
   });
   if (!customer) throw new Error("Customer not found");
   if (!customer.shopifyCustomerId) throw new Error("This customer is not linked to a Shopify customer");
 
-  // Draft order line items (REST expects numeric variant_id)
   const line_items = items.map((li) => ({
     variant_id: Number(li.variantId),
     quantity: li.quantity,
   }));
 
-  // Combine provided tags with default tag and normalize to string
   const provided = normalizeTagsToString(tags);
   const defaults = normalizeTagsToString(DEFAULT_DRAFT_TAG);
   const combined = tagsToString([
@@ -625,17 +597,12 @@ export async function createDraftOrderForCustomer(
     },
   };
 
-  if (combined) {
-    // Ensure this is always a STRING for Shopify REST
-    payload.draft_order.tags = combined;
-  }
-
-  // Final guard: never send an array as tags
+  if (combined) payload.draft_order.tags = combined;
   if (payload?.draft_order?.tags && Array.isArray(payload.draft_order.tags)) {
     payload.draft_order.tags = tagsToString(payload.draft_order.tags);
   }
 
-  const res = await shopifyRest(`/draft_orders.json`, {
+  const res = await shopifyRest(companyId, `/draft_orders.json`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -650,13 +617,11 @@ export async function createDraftOrderForCustomer(
 }
 
 /* ──────────────────────────────────────────────────────────────
-   ➕ Cost-per-item helpers (now return a Map so callers can .entries())
+   Cost-per-item helpers
    ────────────────────────────────────────────────────────────── */
 
-/** Fetch unit cost for a list of numeric ProductVariant IDs.
- *  Returns a Map: variantId -> { unitCost, currency }
- */
 export async function fetchVariantUnitCosts(
+  companyId: string,
   variantNumericIds: Array<string | number>
 ): Promise<Map<string, { unitCost: number | null; currency: string | null }>> {
   const ids = (variantNumericIds || []).map(v => String(v)).filter(Boolean);
@@ -686,7 +651,7 @@ export async function fetchVariantUnitCosts(
         | { id: string; inventoryItem?: { unitCost?: { amount: string; currencyCode: string } | null } | null }
         | null
       >;
-    }>(query, variables);
+    }>(companyId, query, variables);
 
     for (const node of data?.nodes || []) {
       if (!node || !("id" in node) || !node.id) continue;
@@ -701,14 +666,10 @@ export async function fetchVariantUnitCosts(
   return out;
 }
 
-/** Given a raw Shopify Order payload (as received from webhook/REST),
- *  return a per-line cost breakdown based on variant_id and quantity.
- *  Shape: { lines: { [shopifyLineItemId]: { unitCost, extendedCost } }, totalCost }
- */
-export async function fetchLineCostsForOrderPayload(order: any) {
+export async function fetchLineCostsForOrderPayload(companyId: string, order: any) {
   const lines = Array.isArray(order?.line_items) ? order.line_items : [];
   const varIds: string[] = [];
-  const keyByLineId: Record<string, string> = {}; // shopify line id -> variant id
+  const keyByLineId: Record<string, string> = {};
 
   for (const li of lines) {
     const vid = li?.variant_id != null ? String(li.variant_id) : "";
@@ -717,7 +678,7 @@ export async function fetchLineCostsForOrderPayload(order: any) {
     if (lid && vid) keyByLineId[lid] = vid;
   }
 
-  const costMap = await fetchVariantUnitCosts(varIds); // Map<string, { unitCost, currency }>
+  const costMap = await fetchVariantUnitCosts(companyId, varIds);
   const result: Record<string, { unitCost: number | null; extendedCost: number | null }> = {};
   let totalCost = 0;
 
@@ -735,32 +696,24 @@ export async function fetchLineCostsForOrderPayload(order: any) {
   return { lines: result, totalCost };
 }
 
-/** 🔧 Backfill endpoint compatibility:
- *  Some routes import `fetchVariantCostsOnce`. Provide a thin alias so those continue to work.
- */
-export async function fetchVariantCostsOnce(variantNumericIds: Array<string | number>) {
-  return fetchVariantUnitCosts(variantNumericIds);
+export async function fetchVariantCostsOnce(companyId: string, variantNumericIds: Array<string | number>) {
+  return fetchVariantUnitCosts(companyId, variantNumericIds);
 }
 
 /* ──────────────────────────────────────────────────────────────
-   ➕ Variant ID resolution by SKU (for reports/backfills)
+   Variant ID resolution by SKU (for reports/backfills)
    ────────────────────────────────────────────────────────────── */
 
-/**
- * Fetch numeric ProductVariant IDs (legacyResourceId) for a list of SKUs.
- * Returns a Map<sku, variantId>.
- */
 export async function fetchVariantIdsBySkus(
+  companyId: string,
   skus: string[],
   chunkSize = 25
 ): Promise<Map<string, string>> {
   const out = new Map<string, string>();
   if (!skus || skus.length === 0) return out;
 
-  // Helper to escape quotes in SKUs for the search query
   const esc = (s: string) => String(s).replace(/"/g, '\\"');
 
-  // We batch to keep the GraphQL query size reasonable
   for (let i = 0; i < skus.length; i += chunkSize) {
     const batch = skus.slice(i, i + chunkSize);
     const queryString = batch.map((s) => `sku:"${esc(s)}"`).join(" OR ");
@@ -783,25 +736,21 @@ export async function fetchVariantIdsBySkus(
       productVariants: {
         edges: Array<{
           node: {
-            id: string;                 // gid://shopify/ProductVariant/123
+            id: string;
             sku: string | null;
-            legacyResourceId?: string | null; // "123"
+            legacyResourceId?: string | null;
           };
         }>;
       };
     };
 
-    const data = await shopifyGraphql<Gx>(query, { q: queryString, first: 250 });
+    const data = await shopifyGraphql<Gx>(companyId, query, { q: queryString, first: 250 });
 
     for (const edge of data?.productVariants?.edges || []) {
       const sku = (edge.node.sku || "").trim();
       if (!sku) continue;
-
-      // Prefer legacyResourceId (numeric). Fallback: parse from gid.
       const legacy = edge.node.legacyResourceId || gidToNumericId(edge.node.id);
       if (!legacy) continue;
-
-      // Only set the first mapping we find for a SKU (in case of duplicates)
       if (!out.has(sku)) out.set(sku, String(legacy));
     }
   }

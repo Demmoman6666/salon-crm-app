@@ -1,6 +1,9 @@
-// app/api/shopify/webhooks/route.ts
+// app/api/shopify/webhooks/route.ts — MULTI-TENANT
+// Resolves the Company from the x-shopify-shop-domain header and scopes
+// every write to that company.
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { companyFromShopDomain } from "@/lib/tenant";
 import {
   verifyShopifyHmac,
   upsertCustomerFromShopifyById,
@@ -14,8 +17,6 @@ import {
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-const EXPECTED_SHOP = (process.env.SHOPIFY_SHOP_DOMAIN || "").toLowerCase();
 
 function ok(text = "ok", code = 200) {
   return new NextResponse(text, { status: code });
@@ -46,9 +47,15 @@ export async function POST(req: Request) {
       401
     );
   }
-  if (EXPECTED_SHOP && shop && shop !== EXPECTED_SHOP) {
-    return bad(`Unexpected shop domain '${shop}' (expected '${EXPECTED_SHOP}')`, 401);
+
+  // Resolve tenant from the shop domain
+  const company = await companyFromShopDomain(shop);
+  if (!company) {
+    // Unknown store — 200 so Shopify doesn't retry forever, but log it
+    console.warn(`[WEBHOOK] no company for shop '${shop}' topic '${topic}'`);
+    return ok("unknown shop");
   }
+  const companyId = company.id;
 
   let body: any;
   try {
@@ -58,6 +65,16 @@ export async function POST(req: Request) {
   }
 
   try {
+    // ───────── app/uninstalled → mark tenant uninstalled ─────────
+    if (topic === "app/uninstalled") {
+      await prisma.company.update({
+        where: { id: companyId },
+        data: { uninstalledAt: new Date(), shopifyAccessToken: null },
+      });
+      console.log(`[WEBHOOK] app uninstalled for ${shop}`);
+      return ok();
+    }
+
     // ───────── inventory_items/update → cache unit cost per variant ─────────
     if (topic === "inventory_items/update") {
       const invId =
@@ -82,7 +99,7 @@ export async function POST(req: Request) {
       };
 
       try {
-        const data = await shopifyGraphql<Gx>(q, {
+        const data = await shopifyGraphql<Gx>(companyId, q, {
           id: `gid://shopify/InventoryItem/${invId}`,
         });
 
@@ -91,38 +108,23 @@ export async function POST(req: Request) {
         const currency = data?.inventoryItem?.unitCost?.currencyCode ?? "GBP";
 
         if (!legacyVariantId || amountStr == null) {
-          console.info(
-            "[WEBHOOK] inventory_items/update: no variant/cost to upsert",
-            { invId, legacyVariantId, amountStr }
-          );
           return ok();
         }
 
         const unitCost = Number(amountStr);
 
         await prisma.shopifyVariantCost.upsert({
-          where: { variantId: String(legacyVariantId) },
-          create: {
-            variantId: String(legacyVariantId),
-            unitCost,
-            currency,
-          },
-          update: {
-            unitCost,
-            currency,
-          },
+          where: { companyId_variantId: { companyId, variantId: String(legacyVariantId) } },
+          create: { companyId, variantId: String(legacyVariantId), unitCost, currency },
+          update: { unitCost, currency },
         });
-
-        console.log(
-          `[WEBHOOK] cost cached for variant ${legacyVariantId} @ ${unitCost} ${currency}`
-        );
       } catch (e) {
-        console.error("[WEBHOOK] inventory_items/update GraphQL/upsert error:", e);
+        console.error("[WEBHOOK] inventory_items/update error:", e);
       }
       return ok();
     }
 
-    // ───────── products/update → refresh costs for all variants on the product ─────────
+    // ───────── products/update → refresh costs for all variants ─────────
     if (topic === "products/update") {
       const variants = Array.isArray(body?.variants)
         ? body.variants
@@ -141,29 +143,17 @@ export async function POST(req: Request) {
         })
         .filter(Boolean) as string[];
 
-      if (!variantIds.length) {
-        console.log("[WEBHOOK] products/update: no variants in payload");
-        return ok();
-      }
+      if (!variantIds.length) return ok();
 
       try {
-        const rawMap: any = await fetchVariantUnitCosts(variantIds);
-        const pairs: [string, { unitCost: number; currency: string }][] =
-          rawMap && typeof rawMap === "object" && typeof rawMap.entries === "function"
-            ? Array.from(rawMap.entries())
-            : (Object.entries(rawMap || {}) as [string, { unitCost: number; currency: string }][]);
-
-        let upserts = 0;
-        for (const [variantId, entry] of pairs) {
+        const costMap = await fetchVariantUnitCosts(companyId, variantIds);
+        for (const [variantId, entry] of costMap.entries()) {
           await prisma.shopifyVariantCost.upsert({
-            where: { variantId: `${variantId}` },
-            create: { variantId: `${variantId}`, unitCost: entry.unitCost, currency: entry.currency },
+            where: { companyId_variantId: { companyId, variantId: `${variantId}` } },
+            create: { companyId, variantId: `${variantId}`, unitCost: entry.unitCost, currency: entry.currency },
             update: { unitCost: entry.unitCost, currency: entry.currency },
           });
-          upserts++;
         }
-
-        console.log(`[WEBHOOK] products/update: cached ${upserts} variant costs`);
       } catch (e) {
         console.error("[WEBHOOK] products/update cost-refresh error:", e);
       }
@@ -172,47 +162,38 @@ export async function POST(req: Request) {
 
     // ───────── refunds/create → apply full/partial refunds ─────────
     if (topic === "refunds/create") {
-      // Idempotency guard
       const refundId = String(body?.id ?? body?.refund?.id ?? "");
       if (refundId) {
         const seen = await prisma.webhookLog.findFirst({
-          where: { topic: "refunds/create", shopifyId: refundId },
+          where: { companyId, topic: "refunds/create", shopifyId: refundId },
           select: { id: true },
         });
-        if (seen) {
-          console.log(`[WEBHOOK] refunds/create ${refundId} already processed`);
-          return ok("duplicate");
-        }
+        if (seen) return ok("duplicate");
       }
 
-      // Shape-normalize
       const refund = body?.refund ?? body;
       const orderIdStr = String(
         refund?.order_id ?? body?.order_id ?? refund?.order?.id ?? ""
       );
 
       if (!orderIdStr) {
-        console.warn("[WEBHOOK] refunds/create missing order_id");
-        // Still log the payload so we can inspect later
         if (refundId) {
           await prisma.webhookLog.create({
-            data: { topic: "refunds/create", shopifyId: refundId, payload: body },
+            data: { companyId, topic: "refunds/create", shopifyId: refundId, payload: body },
           });
         }
         return ok();
       }
 
-      let refundedNet = 0;       // ex VAT (after discounts)
+      let refundedNet = 0;
       let refundedTax = 0;
       let refundedShipping = 0;
 
-      // Line-level refunds
       const refundLineItems: any[] = Array.isArray(refund?.refund_line_items)
         ? refund.refund_line_items
         : [];
 
       for (const rli of refundLineItems) {
-        // Shopify commonly provides subtotal (ex tax) and total_tax on the refund_line_item
         const sub =
           toNum(rli?.subtotal) ||
           toNum(rli?.subtotal_set?.shop_money?.amount) ||
@@ -228,11 +209,10 @@ export async function POST(req: Request) {
         const qty = Number(rli?.quantity ?? 0) || 0;
         const liId = String(rli?.line_item_id ?? rli?.line_item?.id ?? "") || "";
 
-        // Increment refundedQuantity on our line item (if we have it cached)
         if (liId) {
           try {
-            await prisma.orderLineItem.update({
-              where: { shopifyLineItemId: liId },
+            await prisma.orderLineItem.updateMany({
+              where: { companyId, shopifyLineItemId: liId },
               data: { refundedQuantity: { increment: qty } },
             });
           } catch {
@@ -241,14 +221,12 @@ export async function POST(req: Request) {
         }
       }
 
-      // Shipping refund (if present in payload)
       const shippingRefund = refund?.shipping || refund?.refund_shipping;
       if (shippingRefund) {
         refundedShipping += toNum(shippingRefund.amount);
         refundedTax += toNum(shippingRefund.tax);
       }
 
-      // Order-level adjustments (treat "shipping" kinds as shipping, everything else as net/tax)
       const adjustments: any[] = Array.isArray(refund?.order_adjustments)
         ? refund.order_adjustments
         : [];
@@ -267,10 +245,10 @@ export async function POST(req: Request) {
 
       const refundedTotal = refundedNet + refundedTax + refundedShipping;
 
-      // Persist order-level refund aggregates (upsert to be safe if order wasn’t cached yet)
       await prisma.order.upsert({
-        where: { shopifyOrderId: orderIdStr },
+        where: { companyId_shopifyOrderId: { companyId, shopifyOrderId: orderIdStr } },
         create: {
+          companyId,
           shopifyOrderId: orderIdStr,
           refundedNet,
           refundedTax,
@@ -285,18 +263,11 @@ export async function POST(req: Request) {
         },
       });
 
-      // Log once for idempotency checking
       if (refundId) {
         await prisma.webhookLog.create({
-          data: { topic: "refunds/create", shopifyId: refundId, payload: body },
+          data: { companyId, topic: "refunds/create", shopifyId: refundId, payload: body },
         });
       }
-
-      console.log(
-        `[WEBHOOK] refunds/create order=${orderIdStr} net=${refundedNet.toFixed(
-          2
-        )} tax=${refundedTax.toFixed(2)} ship=${refundedShipping.toFixed(2)} total=${refundedTotal.toFixed(2)}`
-      );
 
       return ok();
     }
@@ -306,9 +277,7 @@ export async function POST(req: Request) {
       const payload = body?.customer ?? body;
       const shopifyId = extractShopifyCustomerId(payload);
 
-      console.info(`[WEBHOOK] ${topic} id=${shopifyId ?? "?"}`);
-
-      await upsertCustomerFromShopifyById(String(shopifyId), shop, {
+      await upsertCustomerFromShopifyById(companyId, String(shopifyId), {
         updateOnly: false,
         matchBy: "shopifyIdOrEmail",
       });
@@ -319,20 +288,10 @@ export async function POST(req: Request) {
     if (topic === "customer.tags_added" || topic === "customer.tags_removed") {
       const shopifyId =
         extractShopifyCustomerId(body) ?? extractShopifyCustomerId(body?.customer);
-      const eventTags = parseShopifyTags(
-        body?.tags ?? body?.added_tags ?? body?.removed_tags
-      );
 
-      console.info(
-        `[WEBHOOK] ${topic} id=${shopifyId ?? "?"} eventTags=${JSON.stringify(eventTags)}`
-      );
+      if (!shopifyId) return ok();
 
-      if (!shopifyId) {
-        console.warn(`[WEBHOOK] ${topic} missing customer id; skipping`);
-        return ok();
-      }
-
-      await upsertCustomerFromShopifyById(String(shopifyId), shop, {
+      await upsertCustomerFromShopifyById(companyId, String(shopifyId), {
         updateOnly: true,
         matchBy: "shopifyIdOnly",
       });
@@ -348,12 +307,10 @@ export async function POST(req: Request) {
       topic === "orders/partially_fulfilled"
     ) {
       const order = body?.order ?? body;
-      await upsertOrderFromShopify(order, shop);
-      console.log(`[WEBHOOK] order upserted from ${topic} id=${order?.id ?? "?"}`);
+      await upsertOrderFromShopify(companyId, order);
       return ok();
     }
 
-    // Ignore everything else, but 200 so Shopify doesn’t retry
     console.log(`[WEBHOOK] ignored topic '${topic}' from ${shop}`);
     return ok();
   } catch (err: any) {
