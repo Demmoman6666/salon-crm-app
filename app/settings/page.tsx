@@ -43,9 +43,9 @@ const FEATURE_LIST: Array<{ key: string; label: string }> = [
 
 function SettingsInner() {
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get("tab") === "reps" ? "reps" : searchParams.get("tab") === "admin" ? "admin" : "account";
+  const initialTab = (searchParams.get("tab") === "reps" || searchParams.get("tab") === "admin") ? "admin" : searchParams.get("tab") === "tools" ? "tools" : "account";
 
-  const [tab, setTab] = useState<"account" | "admin" | "reps" | "tools">(initialTab as any);
+  const [tab, setTab] = useState<"account" | "admin" | "tools">(initialTab as any);
   const [me, setMe] = useState<Me | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -138,7 +138,7 @@ function SettingsInner() {
   }
 
   useEffect(() => {
-    if (tab === "reps") loadReps();
+    if (tab === "admin") loadReps();
   }, [tab]);
 
   async function saveAccount() {
@@ -203,7 +203,7 @@ function SettingsInner() {
       const j = await r.json();
       if (!r.ok) throw new Error(j?.error || "Failed");
       setRepMsg(`${u.fullName || u.email} added as a sales rep.`);
-      if (tab === "reps") await loadReps();
+      if (tab === "admin") await loadReps();
     } catch (e: any) {
       setRepMsg(e.message || "Failed");
     }
@@ -271,11 +271,8 @@ function SettingsInner() {
     { key: "account", label: "Account", icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
     ) },
-    { key: "reps", label: "Sales Reps", adminOnly: true, icon: (
+    { key: "admin", label: "User Management", adminOnly: true, icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    ) },
-    { key: "admin", label: "Admin", adminOnly: true, icon: (
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
     ) },
     { key: "tools", label: "Tools", adminOnly: true, icon: (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
@@ -340,8 +337,21 @@ function SettingsInner() {
       )}
 
       {/* ---- Sales Reps ---- */}
-      {tab === "reps" && isAdmin && (
+      {tab === "admin" && isAdmin && (
         <div className="grid" style={{ gap: 16 }}>
+
+          <section className="card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <h2 style={{ marginBottom: 2 }}>User Management</h2>
+                <p className="small muted" style={{ margin: 0 }}>Manage who can log in, their roles, and your sales reps.</p>
+              </div>
+              <a href="/settings/users/new" className="primary" style={{ whiteSpace: "nowrap" }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 4 }}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+                Add User
+              </a>
+            </div>
+          </section>
 
           {/* Promote a user to rep */}
           {users.filter(u => u.isActive).length > 0 && (
@@ -580,7 +590,7 @@ function SettingsInner() {
 
         <section className="card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h2>User Management</h2>
+            <h2>Users</h2>
             {userMsg && <span className="small muted">{userMsg}</span>}
           </div>
           {users.length === 0 ? <p className="small">No users.</p> : (
