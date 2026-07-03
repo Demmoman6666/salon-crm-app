@@ -1,0 +1,672 @@
+// prisma/schema.prisma — Multi-tenant Shopify App Store build
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------- Tenancy ----------------
+// One Company per Shopify store install. Every tenant-scoped model
+// carries companyId and MUST be filtered by it in every query.
+model Company {
+  id                  String    @id @default(cuid())
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  name                String
+  // Shopify install
+  shopDomain          String    @unique // e.g. my-store.myshopify.com
+  shopifyAccessToken  String?          // offline token from OAuth (encrypt at rest in app layer)
+  shopifyScopes       String?
+  installedAt         DateTime  @default(now())
+  uninstalledAt       DateTime?
+
+  // Billing (Shopify Billing API)
+  plan                String    @default("trial") // trial | starter | growth | pro
+  billingChargeId     String?
+  billingActivatedAt  DateTime?
+  trialEndsAt         DateTime?
+
+  // Onboarding
+  onboardedAt         DateTime?
+  settings            Json?
+
+  // Relations
+  users               User[]
+  customers           Customer[]
+  visits              Visit[]
+  notes               Note[]
+  salesReps           SalesRep[]
+  brands              Brand[]
+  stockedBrands       StockedBrand[]
+  callLogs            CallLog[]
+  orders              Order[]
+  orderLineItems      OrderLineItem[]
+  tagRules            SalesRepTagRule[]
+  syncState           ShopifySyncState?
+  webhookLogs         WebhookLog[]
+  targets             Target[]
+  educationRequests   EducationRequest[]
+  educationBookings   EducationBooking[]
+  educators           Educator[]
+  variantCosts        ShopifyVariantCost[]
+  productPars         CustomerProductPar[]
+  cycleSettings       CycleSettings?
+  auditLogs           AuditLog[]
+
+  @@index([plan])
+}
+
+// ---------------- Settings & Permissions ----------------
+enum Role {
+  ADMIN
+  MANAGER
+  REP
+  VIEWER
+}
+
+enum Permission {
+  VIEW_SALES_HUB
+  VIEW_REPORTS
+  VIEW_CUSTOMERS
+  EDIT_CUSTOMERS
+  VIEW_CALLS
+  EDIT_CALLS
+  VIEW_PROFIT_CALC
+  VIEW_SETTINGS
+}
+
+enum TargetScope {
+  COMPANY
+  REP
+  VENDOR
+}
+
+enum TargetMetric {
+  REVENUE
+  ORDERS
+  NEW_CUSTOMERS
+}
+
+enum CustomerStage {
+  LEAD
+  ENGAGED
+  APPOINTMENT_BOOKED
+  SAMPLING
+  CUSTOMER
+}
+
+enum EducationRequestStatus {
+  REQUESTED
+  BOOKED
+  COMPLETED
+  CANCELLED
+}
+
+enum EducationType {
+  PERMANENT_COLOUR
+  SEMI_PERMANENT_COLOUR
+  CARE_RANGE
+  STYLING_RANGE
+}
+
+enum RouteDay {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+}
+
+model User {
+  id           String           @id @default(cuid())
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  companyId    String
+  company      Company          @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  fullName     String
+  email        String           @unique
+  phone        String?
+  passwordHash String
+
+  role         Role             @default(REP)
+  isActive     Boolean          @default(true)
+
+  // Google OAuth / Calendar
+  googleEmail          String?  @unique
+  googleAccessToken    String?
+  googleRefreshToken   String?
+  googleTokenExpiresAt DateTime?
+  googleCalendarId     String?  @default("primary")
+
+  overrides    UserPermission[]
+  auditLogs    AuditLog[]
+
+  @@index([companyId, role])
+}
+
+model UserPermission {
+  id        String     @id @default(cuid())
+  userId    String
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  perm      Permission
+  createdAt DateTime   @default(now())
+
+  @@unique([userId, perm])
+  @@index([perm])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  action    String
+  details   Json?
+
+  @@index([companyId, createdAt])
+}
+
+// ---------------- CRM models ----------------
+model Customer {
+  id                   String    @id @default(cuid())
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  companyId            String
+  company              Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  salonName            String
+  customerName         String
+  addressLine1         String
+  addressLine2         String?
+  town                 String?
+  county               String?
+  postCode             String?
+  country              String?
+  daysOpen             String?
+  brandsInterestedIn   String?
+  notes                String?
+
+  salesRep             String?
+  salesRepId           String?
+  rep                  SalesRep? @relation("CustomerRep", fields: [salesRepId], references: [id], onDelete: SetNull)
+
+  customerNumber       String?
+  customerTelephone    String?
+  customerEmailAddress String?
+  openingHours         String?
+  numberOfChairs       Int?
+
+  stage                CustomerStage @default(LEAD)
+
+  visits               Visit[]
+  notesLog             Note[]
+  callLogs             CallLog[]
+
+  educationRequests    EducationRequest[]
+  educationBookings    EducationBooking[]
+
+  // Shopify sync
+  shopifyCustomerId    String?
+  shopifyTags          String[]  @default([])
+  shopifyLastSyncedAt  DateTime?
+
+  // Payment terms (applied to Shopify draft orders)
+  paymentDueLater       Boolean  @default(false)
+  paymentTermsName      String?
+  paymentTermsDueInDays Int?
+
+  orders               Order[]
+
+  // Route Planning
+  routePlanEnabled     Boolean     @default(false)
+  routeWeeks           Int[]       @default([])
+  routeDays            RouteDay[]  @default([])
+
+  productPars          CustomerProductPar[]
+
+  @@unique([companyId, shopifyCustomerId])
+  @@index([companyId, customerEmailAddress])
+  @@index([companyId, salesRepId])
+  @@index([companyId, stage])
+  @@index([companyId, routePlanEnabled, salesRep])
+}
+
+model Visit {
+  id               String    @id @default(cuid())
+  companyId        String
+  company          Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerId       String
+  customer         Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  date             DateTime  @default(now())
+  startTime        DateTime?
+  endTime          DateTime?
+  durationMinutes  Int?
+
+  summary          String?
+  staff            String?
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([companyId, customerId, date])
+}
+
+model Note {
+  id          String    @id @default(cuid())
+  companyId   String
+  company     Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerId  String
+  customer    Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  text        String
+  staff       String?
+  createdAt   DateTime  @default(now())
+
+  @@index([companyId, customerId, createdAt])
+}
+
+model SalesRep {
+  id             String    @id @default(cuid())
+  companyId      String
+  company        Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name           String
+  email          String?
+  phone          String?
+  territory      String?
+  cycleStartDate DateTime?
+  createdAt      DateTime  @default(now())
+
+  tagRules  SalesRepTagRule[]
+
+  targets   Target[]   @relation("TargetRep")
+  customers Customer[] @relation("CustomerRep")
+  callLogs  CallLog[]  @relation("CallLogRep")
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Brand {
+  id               String   @id @default(cuid())
+  companyId        String
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name             String
+  createdAt        DateTime @default(now())
+
+  visibleInCallLog Boolean  @default(false)
+
+  competitorLinks  CallLogCompetitorBrand[]
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model CallLog {
+  id                   String   @id @default(cuid())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  companyId            String
+  company              Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  isExistingCustomer   Boolean
+
+  customerId           String?
+  customer             Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  customerName         String?
+  contactPhone         String?
+  contactEmail         String?
+
+  callType             String?
+  summary              String?
+  outcome              String?
+
+  staff                String?
+
+  repId                String?
+  rep                  SalesRep? @relation("CallLogRep", fields: [repId], references: [id], onDelete: SetNull)
+
+  stage                CustomerStage?
+  nextStep             String?
+
+  followUpRequired     Boolean   @default(false)
+  followUpAt           DateTime?
+  educationRequestId   String?
+  educationRequest     EducationRequest? @relation("CallEducationRequest", fields: [educationRequestId], references: [id], onDelete: SetNull)
+
+  startTime            DateTime?
+  endTime              DateTime?
+  durationMinutes      Int?
+  appointmentBooked    Boolean?  @default(false)
+
+  latitude             Float?
+  longitude            Float?
+  accuracyM            Float?
+  geoCollectedAt       DateTime?
+
+  stockedBrandLinks    CallLogStockedBrand[]
+  competitorBrandLinks CallLogCompetitorBrand[]
+
+  @@index([companyId, createdAt])
+  @@index([companyId, isExistingCustomer, customerId])
+  @@index([companyId, stage])
+  @@index([companyId, repId])
+  @@index([companyId, callType])
+  @@index([companyId, outcome])
+}
+
+model StockedBrand {
+  id               String   @id @default(cuid())
+  companyId        String
+  company          Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name             String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  visibleInCallLog Boolean  @default(false)
+  visibleInReports Boolean  @default(false)
+
+  callLinks        CallLogStockedBrand[]
+
+  targets          Target[]  @relation("TargetVendor")
+
+  @@unique([companyId, name])
+  @@index([companyId])
+}
+
+model Order {
+  id                 String     @id @default(cuid())
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  companyId          String
+  company            Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  shopifyOrderId     String?
+  shopifyOrderNumber Int?
+  shopifyName        String?
+  shopifyCustomerId  String?
+
+  customerId         String?
+  customer           Customer?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  processedAt        DateTime?
+  currency           String?
+  financialStatus    String?
+  fulfillmentStatus  String?
+
+  subtotal           Decimal?   @db.Decimal(12, 2)
+  total              Decimal?   @db.Decimal(12, 2)
+  taxes              Decimal?   @db.Decimal(12, 2)
+  discounts          Decimal?   @db.Decimal(12, 2)
+  shipping           Decimal?   @db.Decimal(12, 2)
+
+  refundedNet        Decimal?   @db.Decimal(12, 2)
+  refundedTax        Decimal?   @db.Decimal(12, 2)
+  refundedShipping   Decimal?   @db.Decimal(12, 2)
+  refundedTotal      Decimal?   @db.Decimal(12, 2)
+
+  lineItems          OrderLineItem[]
+
+  tags               String[]   @default([])
+
+  @@unique([companyId, shopifyOrderId])
+  @@index([companyId, customerId, processedAt])
+  @@index([companyId, shopifyCustomerId])
+}
+
+model OrderLineItem {
+  id                String   @id @default(cuid())
+  companyId         String
+  company           Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  shopifyLineItemId String?
+  productId         String?
+  productTitle      String?
+  variantId         String?
+  variantTitle      String?
+  sku               String?
+
+  productVendor     String?
+
+  quantity          Int      @default(1)
+  price             Decimal? @db.Decimal(12, 2)
+  total             Decimal? @db.Decimal(12, 2)
+
+  refundedQuantity  Int?     @default(0)
+
+  createdAt         DateTime @default(now())
+
+  @@unique([companyId, shopifyLineItemId])
+  @@index([orderId])
+  @@index([companyId, productVendor])
+  @@index([companyId, sku])
+}
+
+model SalesRepTagRule {
+  id          String   @id @default(cuid())
+  companyId   String
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  tag         String
+  salesRepId  String
+  salesRep    SalesRep @relation(fields: [salesRepId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  @@unique([companyId, tag])
+}
+
+model ShopifySyncState {
+  id                    String   @id @default(cuid())
+  companyId             String   @unique
+  company               Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lastCustomersSyncedAt DateTime?
+  lastOrdersSyncedAt    DateTime?
+  lastWebhookReceivedAt DateTime?
+  updatedAt             DateTime @updatedAt
+}
+
+model WebhookLog {
+  id        String   @id @default(cuid())
+  companyId String?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  topic     String
+  shopifyId String?
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([companyId, topic, createdAt])
+}
+
+model Target {
+  id           String        @id @default(cuid())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  companyId    String
+  company      Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  scope        TargetScope
+  metric       TargetMetric
+
+  periodStart  DateTime
+  periodEnd    DateTime
+
+  amount       Decimal       @db.Decimal(12, 2)
+  currency     String?       @default("GBP")
+
+  repId        String?
+  rep          SalesRep?     @relation("TargetRep", fields: [repId], references: [id], onDelete: SetNull)
+
+  vendorId     String?
+  vendor       StockedBrand? @relation("TargetVendor", fields: [vendorId], references: [id], onDelete: SetNull)
+
+  notes        String?
+
+  @@index([companyId, scope, metric, periodStart, periodEnd])
+  @@index([repId])
+  @@index([vendorId])
+  @@unique([companyId, scope, metric, periodStart, periodEnd, repId, vendorId], map: "company_scope_metric_period_rep_vendor")
+}
+
+// ---------------- Join tables (scoped via parents) ----------------
+model CallLogStockedBrand {
+  id        String       @id @default(cuid())
+  callLogId String
+  brandId   String
+  createdAt DateTime     @default(now())
+
+  callLog   CallLog      @relation(fields: [callLogId], references: [id], onDelete: Cascade)
+  brand     StockedBrand @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([callLogId, brandId])
+  @@index([brandId])
+}
+
+model CallLogCompetitorBrand {
+  id        String   @id @default(cuid())
+  callLogId String
+  brandId   String
+  createdAt DateTime @default(now())
+
+  callLog   CallLog  @relation(fields: [callLogId], references: [id], onDelete: Cascade)
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+
+  @@unique([callLogId, brandId])
+  @@index([brandId])
+}
+
+// ---------------- Education ----------------
+model EducationRequest {
+  id           String                 @id @default(cuid())
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+
+  companyId    String
+  company      Company                @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  customerId   String
+  customer     Customer               @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  status       EducationRequestStatus @default(REQUESTED)
+
+  salonName    String?
+  contactName  String?
+  phone        String?
+  email        String?
+  addressLine1 String?
+  addressLine2 String?
+  town         String?
+  county       String?
+  postCode     String?
+  country      String?
+
+  brands          String[]        @default([])
+  educationTypes  EducationType[] @default([])
+
+  notes        String?
+
+  booking      EducationBooking?  @relation("RequestBooking")
+
+  callLogs     CallLog[]          @relation("CallEducationRequest")
+
+  @@index([companyId, customerId, createdAt])
+  @@index([companyId, status])
+}
+
+model EducationBooking {
+  id             String            @id @default(cuid())
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  companyId      String
+  company        Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  requestId      String?           @unique
+  request        EducationRequest? @relation("RequestBooking", fields: [requestId], references: [id], onDelete: SetNull)
+
+  educatorId     String?
+  educator       Educator?         @relation(fields: [educatorId], references: [id], onDelete: SetNull)
+
+  customerId     String
+  customer       Customer          @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  title          String?
+  startAt        DateTime?
+  endAt          DateTime?
+  location       String?
+
+  brand          String?
+  educationTypes EducationType[]   @default([])
+
+  notes          String?
+
+  @@index([companyId, customerId, startAt])
+}
+
+model Educator {
+  id          String             @id @default(cuid())
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  companyId   String
+  company     Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  name        String
+  email       String?
+  phone       String?
+  specialisms String[]           @default([])
+  active      Boolean            @default(true)
+  bookings    EducationBooking[]
+
+  @@index([companyId, active])
+}
+
+// ---------------- Shopify Variant Cost Cache ----------------
+model ShopifyVariantCost {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  variantId String
+  unitCost  Decimal? @db.Decimal(12, 4)
+  currency  String?  @default("GBP")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, variantId])
+}
+
+// ---------------- Recommended Stock (PAR) per Customer+SKU ----------------
+model CustomerProductPar {
+  id         String   @id @default(cuid())
+  companyId  String
+  company    Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  sku        String
+  parQty     Int
+  updatedAt  DateTime @updatedAt
+
+  @@unique([customerId, sku], map: "customer_sku_unique")
+  @@index([companyId, sku])
+}
+
+// ---------------- Route Cycle Settings (per company) ----------------
+model CycleSettings {
+  id             String   @id @default(cuid())
+  companyId      String   @unique
+  company        Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cycleStartDate DateTime
+  updatedAt      DateTime @updatedAt
+}

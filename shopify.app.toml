@@ -1,0 +1,18 @@
+# Shopify app configuration (used by Shopify CLI / Partner Dashboard reference)
+name = "Salon CRM"
+client_id = "SET_FROM_PARTNER_DASHBOARD"
+application_url = "https://your-app.vercel.app"
+embedded = false
+
+[access_scopes]
+scopes = "read_customers,write_customers,read_orders,read_products,write_draft_orders"
+
+[auth]
+redirect_urls = ["https://your-app.vercel.app/api/shopify/auth/callback"]
+
+[webhooks]
+api_version = "2025-01"
+
+  [[webhooks.subscriptions]]
+  topics = ["customers/data_request", "customers/redact", "shop/redact"]
+  uri = "/api/shopify/gdpr"
