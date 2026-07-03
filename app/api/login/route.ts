@@ -2,6 +2,8 @@
 import { NextResponse, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 // --- small helpers for the signed cookie your middleware verifies ---
 const COOKIE_NAME = "sbp_session";
 

@@ -2,6 +2,8 @@ import { requireTenant } from "@/lib/tenant";
 import { NextResponse } from "next/server";
 import { shopifyRest } from "@/lib/shopify";
 
+export const dynamic = "force-dynamic";
+
 const VAT_RATE = Number(process.env.VAT_RATE ?? process.env.NEXT_PUBLIC_VAT_RATE ?? "0.20");
 
 // Robustly turn any Shopify id (GID or numeric) into a number

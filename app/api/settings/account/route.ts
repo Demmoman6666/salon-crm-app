@@ -5,6 +5,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import bcrypt from "bcryptjs";
 
+export const dynamic = "force-dynamic";
+
 export const runtime = "nodejs"; // ensure Node runtime for bcryptjs
 
 // Accept POST, PATCH, PUT -> all behave the same

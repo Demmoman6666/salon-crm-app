@@ -2,6 +2,8 @@ import { requireTenant } from "@/lib/tenant";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 function money(n?: any, currency?: string) {
   if (n == null) return "-";
   const num = typeof n === "string" ? parseFloat(n) : Number(n);

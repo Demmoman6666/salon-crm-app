@@ -3,6 +3,8 @@ import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import { getCompanyName } from "@/lib/tenant";
 
+export const dynamic = "force-dynamic";
+
 export default async function Home() {
   const me = await getCurrentUser();
   const companyName = await getCompanyName();

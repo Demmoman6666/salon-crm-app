@@ -5,6 +5,8 @@ import Link from "next/link";
 import EditForm from "./EditForm";
 import { revalidatePath } from "next/cache";
 
+export const dynamic = "force-dynamic";
+
 export default async function EditCustomerPage({
   params,
 }: { params: { id: string } }) {

@@ -3,6 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import RefundFormClient from "./RefundFormClient";
 
+export const dynamic = "force-dynamic";
+
 const VAT_RATE = Number(process.env.VAT_RATE ?? "0.20");
 
 export default async function RefundPage({ params }: { params: { id: string } }) {
