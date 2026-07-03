@@ -1,5 +1,6 @@
 // app/api/admin/users/route.ts
 import { requireTenant } from "@/lib/tenant";
+import { requireCapability, ForbiddenError } from "@/lib/rbac";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -26,6 +27,7 @@ function coerceRole(input: any): Role | undefined {
 
 /** GET /api/admin/users — list all users (admin only) */
 export async function GET() {
+  try { await requireCapability("users"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const guard = await requireAdmin();
   if (guard) return guard;
@@ -51,6 +53,7 @@ export async function GET() {
  *  body: { fullName, email, password, phone?, role?, isActive? }
  */
 export async function POST(req: Request) {
+  try { await requireCapability("users"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const guard = await requireAdmin();
   if (guard) return guard;

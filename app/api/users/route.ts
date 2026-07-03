@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { requireTenant } from "@/lib/tenant";
+import { requireCapability, ForbiddenError } from "@/lib/rbac";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { Role, Permission } from "@prisma/client";
@@ -63,6 +64,7 @@ export async function GET() {
 
 /* ----------------------- POST /api/users ----------------------- */
 export async function POST(req: Request) {
+  try { await requireCapability("users"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const guard = await requireAdmin();
   if ("error" in guard) return guard.error;

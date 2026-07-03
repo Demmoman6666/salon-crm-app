@@ -1,4 +1,5 @@
 import { requireTenant } from "@/lib/tenant";
+import { requireCapability, ForbiddenError } from "@/lib/rbac";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
@@ -63,6 +64,7 @@ orderBy: { name: "asc" },
 }
 
 export async function PATCH(req: NextRequest) {
+  try { await requireCapability("brands"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const me = await currentUser(req);
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

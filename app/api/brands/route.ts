@@ -1,5 +1,6 @@
 // app/api/brands/route.ts
 import { requireTenant } from "@/lib/tenant";
+import { requireCapability, ForbiddenError } from "@/lib/rbac";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookies } from "next/headers";
@@ -68,6 +69,7 @@ export async function GET() {
 
 /* POST: create one competitor brand { name } */
 export async function POST(req: Request) {
+  try { await requireCapability("brands"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const g = await requireAdmin();
   if ("error" in g) return g.error;
@@ -91,6 +93,7 @@ export async function POST(req: Request) {
 
 /* PATCH: toggle visibility { id, visible } */
 export async function PATCH(req: Request) {
+  try { await requireCapability("brands"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const g = await requireAdmin();
   if ("error" in g) return g.error;
@@ -115,6 +118,7 @@ export async function PATCH(req: Request) {
 
 /* DELETE: ?id=... */
 export async function DELETE(req: Request) {
+  try { await requireCapability("brands"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const g = await requireAdmin();
   if ("error" in g) return g.error;

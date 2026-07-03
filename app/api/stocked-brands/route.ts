@@ -1,5 +1,6 @@
 // app/api/stocked-brands/route.ts
 import { requireTenant } from "@/lib/tenant";
+import { requireCapability, ForbiddenError } from "@/lib/rbac";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { shopifyRest } from "@/lib/shopify";
@@ -107,6 +108,7 @@ export async function GET() {
       Optional: &reset=1, &rpm=120
 ================================================================ */
 export async function POST(req: Request) {
+  try { await requireCapability("brands"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const g = await requireAdmin();
   if ("error" in g) return g.error;
@@ -244,6 +246,7 @@ export async function POST(req: Request) {
    Body: { id: string, visible: boolean }  -> toggles visibleInCallLog
 ================================================================ */
 export async function PATCH(req: Request) {
+  try { await requireCapability("brands"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const g = await requireAdmin();
   if ("error" in g) return g.error;
@@ -272,6 +275,7 @@ export async function PATCH(req: Request) {
    DELETE /api/stocked-brands?id=...
 ================================================================ */
 export async function DELETE(req: Request) {
+  try { await requireCapability("brands"); } catch (e: any) { return NextResponse.json({ error: e.message }, { status: e.status || 403 }); }
   const t = await requireTenant();
   const g = await requireAdmin();
   if ("error" in g) return g.error;
