@@ -60,6 +60,8 @@ const PUBLIC_PATHS = [
   "/api/google/oauth/callback",
   "/onboarding",
   "/api/onboarding",
+  "/accept-invite",
+  "/api/invites/accept",
   "/api/shopify/auth",
   "/api/shopify/auth/callback",
   "/api/shopify/gdpr",

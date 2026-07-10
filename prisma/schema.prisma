@@ -58,6 +58,7 @@ model Company {
   auditLogs           AuditLog[]
 
   @@index([plan])
+  invites             Invite[]
 }
 
 // ---------------- Settings & Permissions ----------------
@@ -160,6 +161,26 @@ model UserPermission {
   @@unique([userId, perm])
   @@index([perm])
 }
+
+model Invite {
+  id           String   @id @default(cuid())
+  companyId    String
+  company      Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  email        String
+  fullName     String
+  phone        String?
+  role         Role     @default(REP)
+
+  token        String   @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  createdAt    DateTime @default(now())
+
+  @@index([companyId])
+  @@index([token])
+}
+
 
 model AuditLog {
   id        String   @id @default(cuid())
