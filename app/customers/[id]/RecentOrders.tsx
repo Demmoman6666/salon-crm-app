@@ -1,4 +1,5 @@
 // app/customers/[id]/RecentOrders.tsx
+import { requireTenant } from "@/lib/tenant";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatDateTimeUK } from "@/lib/dates"; // <<— UK DD/MM/YYYY HH:mm
@@ -36,8 +37,9 @@ function fmtMoney(n: any, currency?: string) {
 }
 
 export default async function RecentOrders({ customerId }: { customerId: string }) {
+  const t = await requireTenant();
   const orders = await prisma.order.findMany({
-    where: { customerId },
+    where: { companyId: t.companyId, customerId },
     orderBy: [{ processedAt: "desc" }, { createdAt: "desc" }],
     take: 10,
     select: {

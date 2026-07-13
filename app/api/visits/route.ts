@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   const customerId = searchParams.get('customerId') ?? undefined;
 
   const visits = await prisma.visit.findMany({
-    where: customerId ? { customerId } : undefined,
+    where: customerId ? { companyId: t.companyId, customerId } : { companyId: t.companyId },
     orderBy: { date: 'desc' },
     include: { customer: true },
   });

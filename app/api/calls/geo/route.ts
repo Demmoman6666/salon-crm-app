@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
     const start = new Date(end.getTime() - days * 24 * 60 * 60 * 1000);
 
     const where: any = {
+      companyId: t.companyId,
       latitude: { not: null },
       longitude: { not: null },
       createdAt: { gte: start, lte: end },

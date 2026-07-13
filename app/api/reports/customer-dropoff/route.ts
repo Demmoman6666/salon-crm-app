@@ -56,7 +56,7 @@ export async function GET(req: Request) {
   const reps = repsRaw.map(s => s.trim()).filter(Boolean);
 
   // Base customers set (optionally filtered by sales rep)
-  const whereCustomer: any = {};
+  const whereCustomer: any = { companyId: t.companyId,};
   if (reps.length) whereCustomer.salesRep = { in: reps };
 
   const customers = await prisma.customer.findMany({
@@ -96,7 +96,7 @@ export async function GET(req: Request) {
   const lastOrders = await prisma.order.groupBy({
     by: ["customerId"],
     _max: { processedAt: true },
-    where: { customerId: { in: ids } },
+    where: { companyId: t.companyId, customerId: { in: ids } },
   });
 
   const lastMap = new Map<string, Date | null>();

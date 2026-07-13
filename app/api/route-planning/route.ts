@@ -111,7 +111,7 @@ export async function GET(req: Request) {
   if (day)  andFilters.push({ routeDays: { has: day as any } });
 
   // IMPORTANT: do NOT SQL-prefilter by daysOpen, otherwise customers who only have openingHours JSON get excluded.
-  const where: Prisma.CustomerWhereInput = andFilters.length ? { AND: andFilters } : {};
+  const where: Prisma.CustomerWhereInput = andFilters.length ? { companyId: t.companyId, AND: andFilters } : { companyId: t.companyId };
 
   const customers = await prisma.customer.findMany({
     where,

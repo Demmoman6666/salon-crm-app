@@ -22,13 +22,14 @@ export async function GET(req: NextRequest) {
 
     if (repId) {
       const rep = await prisma.salesRep.findUnique({
-        where: { id: repId },
+        where: { companyId: t.companyId, id: repId },
         select: { name: true },
       });
       repName = rep?.name ?? null;
     }
 
     const where: any = {
+      companyId: t.companyId,
       latitude: { not: null },
       longitude: { not: null },
     };

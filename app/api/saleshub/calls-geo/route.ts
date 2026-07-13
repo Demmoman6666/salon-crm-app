@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
 
     // Base filters: must have coordinates and be within the lookback window
     const where: any = {
+      companyId: t.companyId,
       latitude: { not: null },
       longitude: { not: null },
       createdAt: { gte: since },

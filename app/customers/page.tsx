@@ -36,6 +36,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
 
   const where: Prisma.CustomerWhereInput = q
     ? {
+        companyId: t.companyId,
         OR: [
           { salonName: ci(q) },
           { customerName: ci(q) },
@@ -46,7 +47,7 @@ export default async function CustomersPage({ searchParams }: PageProps) {
           { brandsInterestedIn: ci(q) },
         ],
       }
-    : {};
+    : { companyId: t.companyId };
 
   const customers = await prisma.customer.findMany({
     where,
