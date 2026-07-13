@@ -60,10 +60,10 @@ export async function exchangeCodeForToken(shop: string, code: string): Promise<
 }> {
   const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    // `expiring: true` -> Shopify returns an expiring offline token + refresh_token.
+    headers: { "Content-Type": "application/json", "Accept": "application/json" },
+    // expiring: 1 (NOT true) -> Shopify returns an expiring offline token + refresh_token.
     // Non-expiring tokens are rejected by the Admin API for public apps.
-    body: JSON.stringify({ client_id: API_KEY, client_secret: API_SECRET, code, expiring: true }),
+    body: JSON.stringify({ client_id: API_KEY, client_secret: API_SECRET, code, expiring: 1 }),
   });
   if (!res.ok) throw new Error(`Token exchange failed: ${res.status} ${await res.text()}`);
   return res.json();
