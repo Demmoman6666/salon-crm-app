@@ -122,6 +122,7 @@ function normaliseRow(row: any): Item | null {
   const priceExVat = parsePrice(priceExVatRaw);
 
   const availableRaw =
+    row.stock ??
     row.available ??
     row.inventoryQuantity ??
     row.inventory_quantity ??

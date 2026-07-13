@@ -97,13 +97,19 @@ export async function GET(req: Request) {
         image: img ? { src: img } : null,
         variants: (p.variants?.edges || []).map((ve) => {
           const v = ve.node;
+          const numericStock =
+            typeof v.inventoryQuantity === "number" ? v.inventoryQuantity : null;
+          const sellable = v.availableForSale ?? true;
           return {
             id: gidToNumericId(v.id) || v.id,
             title: v.title,
             price: v.price ?? null, // scalar string from Admin API (ex-VAT)
             sku: v.sku ?? null,
-            available: v.availableForSale ?? true,
-            stock: typeof v.inventoryQuantity === "number" ? v.inventoryQuantity : null, // live stock
+            available: sellable,
+            // Numeric stock for the picker. If inventory isn't tracked (null) but the
+            // variant is sellable, expose null (picker treats null = no cap = in stock)
+            // rather than 0 (which reads as out of stock).
+            stock: numericStock,
             barcode: v.barcode ?? null,
           };
         }),
