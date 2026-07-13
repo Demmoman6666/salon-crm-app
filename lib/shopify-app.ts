@@ -51,14 +51,42 @@ export function verifyOAuthHmac(query: URLSearchParams): boolean {
   }
 }
 
-/** Exchange the OAuth code for a permanent offline access token. */
-export async function exchangeCodeForToken(shop: string, code: string): Promise<{ access_token: string; scope: string }> {
+/** Exchange the OAuth code for an EXPIRING offline access token (+ refresh token). */
+export async function exchangeCodeForToken(shop: string, code: string): Promise<{
+  access_token: string;
+  scope: string;
+  refresh_token?: string;
+  expires_in?: number;
+}> {
   const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ client_id: API_KEY, client_secret: API_SECRET, code }),
+    // `expiring: true` -> Shopify returns an expiring offline token + refresh_token.
+    // Non-expiring tokens are rejected by the Admin API for public apps.
+    body: JSON.stringify({ client_id: API_KEY, client_secret: API_SECRET, code, expiring: true }),
   });
   if (!res.ok) throw new Error(`Token exchange failed: ${res.status} ${await res.text()}`);
+  return res.json();
+}
+
+/** Use a stored refresh token to mint a fresh access/refresh token pair. */
+export async function refreshAccessToken(shop: string, refreshToken: string): Promise<{
+  access_token: string;
+  refresh_token?: string;
+  expires_in?: number;
+  scope?: string;
+}> {
+  const res = await fetch(`https://${shop}/admin/oauth/access_token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      client_id: API_KEY,
+      client_secret: API_SECRET,
+      grant_type: "refresh_token",
+      refresh_token: refreshToken,
+    }),
+  });
+  if (!res.ok) throw new Error(`Token refresh failed: ${res.status} ${await res.text()}`);
   return res.json();
 }
 

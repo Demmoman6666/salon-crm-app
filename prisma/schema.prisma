@@ -20,6 +20,8 @@ model Company {
   // Shopify install
   shopDomain          String    @unique // e.g. my-store.myshopify.com
   shopifyAccessToken  String?          // offline token from OAuth (encrypt at rest in app layer)
+  shopifyRefreshToken   String?
+  shopifyTokenExpiresAt DateTime?
   shopifyScopes       String?
   installedAt         DateTime  @default(now())
   uninstalledAt       DateTime?

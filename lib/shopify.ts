@@ -21,12 +21,49 @@ async function getCreds(companyId: string): Promise<{ shopDomain: string; token:
   if (hit && Date.now() - hit.ts < 60_000) return hit;
   const c = await prisma.company.findUnique({
     where: { id: companyId },
-    select: { shopDomain: true, shopifyAccessToken: true, uninstalledAt: true },
+    select: {
+      shopDomain: true,
+      shopifyAccessToken: true,
+      shopifyRefreshToken: true,
+      shopifyTokenExpiresAt: true,
+      uninstalledAt: true,
+    },
   });
   if (!c?.shopDomain || !c.shopifyAccessToken || c.uninstalledAt) {
     throw new Error("Shopify is not connected for this company");
   }
-  const creds = { shopDomain: c.shopDomain, token: c.shopifyAccessToken, ts: Date.now() };
+
+  let token = c.shopifyAccessToken;
+
+  // If the token is expiring (or already expired) and we have a refresh token,
+  // refresh it now. 5-minute safety margin before expiry.
+  const expiresAt = c.shopifyTokenExpiresAt ? new Date(c.shopifyTokenExpiresAt).getTime() : null;
+  const needsRefresh = expiresAt !== null && expiresAt - Date.now() < 5 * 60 * 1000;
+
+  if (needsRefresh && c.shopifyRefreshToken) {
+    try {
+      const { refreshAccessToken } = await import("@/lib/shopify-app");
+      const refreshed = await refreshAccessToken(c.shopDomain, c.shopifyRefreshToken);
+      token = refreshed.access_token;
+      const newExpiry = refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000) : null;
+      // Persist the new pair (refresh tokens rotate — must save the new one)
+      await prisma.company.update({
+        where: { id: companyId },
+        data: {
+          shopifyAccessToken: refreshed.access_token,
+          shopifyRefreshToken: refreshed.refresh_token ?? c.shopifyRefreshToken,
+          shopifyTokenExpiresAt: newExpiry,
+        },
+      });
+      credsCache.delete(companyId);
+    } catch (e) {
+      // If refresh fails, fall through with the existing token; the API call will
+      // surface the real error (and the merchant may need to reauthorize).
+      console.error("Shopify token refresh failed:", (e as any)?.message || e);
+    }
+  }
+
+  const creds = { shopDomain: c.shopDomain, token, ts: Date.now() };
   credsCache.set(companyId, creds);
   return creds;
 }

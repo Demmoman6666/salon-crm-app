@@ -32,7 +32,8 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "State mismatch" }, { status: 401 });
   }
 
-  const { access_token, scope } = await exchangeCodeForToken(shop, code);
+  const { access_token, scope, refresh_token, expires_in } = await exchangeCodeForToken(shop, code);
+  const tokenExpiresAt = expires_in ? new Date(Date.now() + expires_in * 1000) : null;
 
   const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
   const company = await prisma.company.upsert({
@@ -41,12 +42,16 @@ export async function GET(req: Request) {
       name: shop.replace(".myshopify.com", ""),
       shopDomain: shop,
       shopifyAccessToken: access_token,
+      shopifyRefreshToken: refresh_token ?? null,
+      shopifyTokenExpiresAt: tokenExpiresAt,
       shopifyScopes: scope,
       plan: "trial",
       trialEndsAt,
     },
     update: {
       shopifyAccessToken: access_token,
+      shopifyRefreshToken: refresh_token ?? null,
+      shopifyTokenExpiresAt: tokenExpiresAt,
       shopifyScopes: scope,
       uninstalledAt: null,
     },
