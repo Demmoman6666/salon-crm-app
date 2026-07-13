@@ -12,6 +12,13 @@ export async function POST(req: Request) {
 
   const query = pageInfo ? `?limit=250&page_info=${encodeURIComponent(pageInfo)}` : "?limit=250";
   const res = await shopifyRest(t.companyId, `/customers.json${query}`, { method: "GET" });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    return NextResponse.json(
+      { error: `Shopify customers read failed: ${res.status}`, detail: text.slice(0, 500) },
+      { status: 502 }
+    );
+  }
   const json = await res.json();
 
   for (const c of json.customers || []) {
