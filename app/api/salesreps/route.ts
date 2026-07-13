@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 
 export async function GET() {
   const t = await requireTenant();
-  const reps = await prisma.salesRep.findMany({ orderBy: { name: "asc" } });
+  const reps = await prisma.salesRep.findMany({ where: { companyId: t.companyId }, orderBy: { name: "asc" } });
   return NextResponse.json(reps);
 }
 

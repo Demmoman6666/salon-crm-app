@@ -45,6 +45,7 @@ export async function GET() {
   if ("error" in guard) return guard.error;
 
   const users = await prisma.user.findMany({
+    where: { companyId: t.companyId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

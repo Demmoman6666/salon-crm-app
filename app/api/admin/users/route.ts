@@ -33,6 +33,7 @@ export async function GET() {
   if (guard) return guard;
 
   const users = await prisma.user.findMany({
+    where: { companyId: t.companyId },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
