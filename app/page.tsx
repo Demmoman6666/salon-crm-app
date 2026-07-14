@@ -1,7 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
 import "./landing.css";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +11,8 @@ export const metadata: Metadata = {
 };
 
 export default async function LandingPage() {
-  const me = await getCurrentUser().catch(() => null);
-  if (me) redirect("/home");
+  // No auto-redirect here — a stale/legacy cookie could otherwise bounce visitors
+  // into a login loop. Logged-in users can click "Log in" to enter the app.
 
   const features = [
     { title: "Log calls from the field", body: "Reps capture every visit and call with GPS, outcome, and follow-up — from their phone, in seconds." },
