@@ -52,6 +52,7 @@ async function verifyToken(token: string | undefined | null): Promise<{ userId: 
  * - favicon and common root files
  */
 const PUBLIC_PATHS = [
+  "/",
   "/login",
   "/api/login",
   "/api/auth/login",
@@ -114,7 +115,7 @@ export async function middleware(req: NextRequest) {
       const tok = req.cookies.get(COOKIE_NAME)?.value;
       const ok = await verifyToken(tok);
       if (ok) {
-        const next = req.nextUrl.searchParams.get("next") || "/";
+        const next = req.nextUrl.searchParams.get("next") || "/home";
         return NextResponse.redirect(new URL(next, req.url));
       }
     }

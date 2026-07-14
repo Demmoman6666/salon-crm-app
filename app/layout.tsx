@@ -1,10 +1,7 @@
 // app/layout.tsx
 import "./globals.css";
+import AppChrome from "@/components/AppChrome";
 import type { Metadata } from "next";
-import Link from "next/link";
-import SettingsMenu from "@/components/SettingsMenu";
-import ThemeToggle from "@/components/ThemeToggle";
-import BackButton from "@/components/BackButton";
 
 export const metadata: Metadata = {
   title: "FieldCRM",
@@ -55,73 +52,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
 
       <body>
-        <header
-          style={{
-            position: "sticky",
-            top: 0,
-            zIndex: 50,
-            background: "#ffffff",
-            borderBottom: "1px solid #eee",
-          }}
-        >
-          {/* 3-column grid: [left/back] [centered logo] [settings] */}
-          <div
-            className="container header-wrap"
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr auto 1fr",
-              alignItems: "center",
-              padding: "12px 16px",
-              maxWidth: 1100,
-              margin: "0 auto",
-            }}
-          >
-            {/* Left: Back button (falls back to /customers if no history) */}
-            <div style={{ justifySelf: "start" }}>
-              <BackButton className="btn" label="Back" fallback="/customers" />
-            </div>
-
-            {/* Center: Logo */}
-            <Link
-              href="/"
-              className="header-logo"
-              style={{
-                justifySelf: "center",
-                display: "inline-flex",
-                alignItems: "center",
-              }}
-            >
-              <span
-                className="brand-wordmark"
-                style={{ fontSize: "1.5rem", fontWeight: 800, letterSpacing: "-0.02em", color: "var(--text)" }}
-              >
-                Field<span style={{ color: "var(--pink, #e6007e)" }}>CRM</span>
-              </span>
-            </Link>
-
-            {/* Right: Theme toggle + Settings */}
-            <div style={{ justifySelf: "end", display: "flex", alignItems: "center", gap: 8 }}>
-              <ThemeToggle />
-              <SettingsMenu />
-            </div>
-          </div>
-        </header>
-
-        <main
-          className="container"
-          style={{ maxWidth: 1100, margin: "0 auto", padding: "24px 16px" }}
-        >
-          {children}
-        </main>
-
-        <footer style={{ borderTop: "1px solid #eee", padding: "16px 0" }}>
-          <div
-            className="container"
-            style={{ maxWidth: 1100, margin: "0 auto", padding: "0 16px" }}
-          >
-            <small>© FieldCRM</small>
-          </div>
-        </footer>
+        <AppChrome>{children}</AppChrome>
       </body>
     </html>
   );
