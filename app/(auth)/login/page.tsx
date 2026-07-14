@@ -100,6 +100,10 @@ export default function LoginPage() {
             {submitting ? "Signing in…" : "Sign in"}
           </button>
 
+          <a href="/forgot-password" className="small" style={{ display: "block", textAlign: "center", marginTop: 12, color: "#2563eb" }}>
+            Forgot password?
+          </a>
+
           {msg && (
             <div className="small" style={{ color: "#b91c1c", textAlign: "center" }}>
               {msg}

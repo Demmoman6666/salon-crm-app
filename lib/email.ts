@@ -60,3 +60,33 @@ function escapeHtml(s: string) {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;");
 }
+
+export async function sendPasswordResetEmail(opts: {
+  to: string;
+  fullName?: string | null;
+  resetUrl: string;
+}) {
+  const { to, fullName, resetUrl } = opts;
+  const html = `
+    <div style="font-family: -apple-system, system-ui, sans-serif; max-width: 480px; margin: 0 auto; color: #0f172a;">
+      <h2 style="color:#0f172a;">Reset your FieldCRM password</h2>
+      <p>Hi ${escapeHtml(fullName || "there")},</p>
+      <p>We received a request to reset your password. Click the button below to choose a new one.</p>
+      <p style="margin: 28px 0;">
+        <a href="${resetUrl}" style="background:#2563eb; color:#fff; padding:12px 20px; border-radius:8px; text-decoration:none; font-weight:600; display:inline-block;">
+          Reset password
+        </a>
+      </p>
+      <p style="color:#64748b; font-size:14px;">This link expires in 1 hour. If you didn't request this, you can safely ignore this email.</p>
+      <p style="color:#94a3b8; font-size:12px; margin-top:24px;">If the button doesn't work, paste this link into your browser:<br>${resetUrl}</p>
+    </div>
+  `;
+  const result = await getResend().emails.send({
+    from: FROM,
+    to,
+    subject: "Reset your FieldCRM password",
+    html,
+  });
+  if (result.error) throw new Error(`Email send failed: ${result.error.message || "unknown"}`);
+  return result;
+}

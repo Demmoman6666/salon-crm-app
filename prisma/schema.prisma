@@ -145,6 +145,8 @@ model User {
   googleAccessToken    String?
   googleRefreshToken   String?
   googleTokenExpiresAt DateTime?
+  resetToken           String?   @unique
+  resetTokenExpiresAt  DateTime?
   googleCalendarId     String?  @default("primary")
 
   overrides    UserPermission[]
