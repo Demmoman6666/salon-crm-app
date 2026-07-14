@@ -17,6 +17,9 @@ export const OAUTH_SCOPES = [
   "read_orders",
   "read_products",
   "write_draft_orders",
+  "read_draft_orders",
+  "read_payment_terms",
+  "write_payment_terms",
 ].join(",");
 
 // ---------- OAuth ----------
