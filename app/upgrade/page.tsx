@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getEntitlements } from "@/lib/entitlements";
 import { PLANS } from "@/lib/plans";
+import PlanComparison from "@/components/PlanComparison";
+import "../landing.css";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +60,12 @@ export default async function UpgradePage() {
       <p className="small muted" style={{ textAlign: "center", marginTop: 24 }}>
         Billing is handled securely through Shopify. You can change or cancel anytime.
       </p>
+
+      <div style={{ marginTop: 40 }}>
+        <h2 style={{ textAlign: "center", margin: "0 0 4px" }}>Compare plans</h2>
+        <p className="muted" style={{ textAlign: "center", margin: "0 0 20px" }}>Every feature, side by side.</p>
+        <PlanComparison />
+      </div>
     </div>
   );
 }

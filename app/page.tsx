@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
 import PricingTiers from "@/components/PricingTiers";
+import PlanComparison from "@/components/PlanComparison";
 import "./landing.css";
 
 export const dynamic = "force-dynamic";
@@ -83,6 +84,11 @@ export default async function LandingPage() {
           <h2 className="lp-section-title">Priced by the size of your team</h2>
           <p className="lp-section-lead">Every plan includes the core CRM. Choose the tier that fits how many reps you run.</p>
           <PricingTiers />
+          <div className="lp-cmp-heading">
+            <h3>Compare plans</h3>
+            <p>Every feature, side by side.</p>
+          </div>
+          <PlanComparison />
         </div>
       </section>
 
