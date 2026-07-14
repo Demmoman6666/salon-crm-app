@@ -10,10 +10,25 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   try {
     const t = await requireTenant();
-    const { plan } = await req.json();
+
+    // Accept both JSON ({plan}) and HTML form posts (plan=...).
+    let plan = "";
+    const ctype = req.headers.get("content-type") || "";
+    if (ctype.includes("application/json")) {
+      plan = (await req.json())?.plan || "";
+    } else {
+      const fd = await req.formData();
+      plan = String(fd.get("plan") || "");
+    }
+
     if (!PLANS[plan]) return NextResponse.json({ error: "Unknown plan" }, { status: 400 });
 
     const { confirmationUrl } = await createSubscription(t.companyId, plan);
+
+    // Form posts → redirect straight to Shopify's confirmation page.
+    if (!ctype.includes("application/json")) {
+      return NextResponse.redirect(confirmationUrl, { status: 303 });
+    }
     return NextResponse.json({ confirmationUrl });
   } catch (e: any) {
     const status = e instanceof TenantError ? e.status : 500;
