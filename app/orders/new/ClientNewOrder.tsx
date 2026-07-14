@@ -586,11 +586,23 @@ async function payOnAccount() {
           </button>
         </div>
 
-        {/* tiny debug readout: lets us see what we sent/what Shopify kept on the draft */}
         {accountDebug && (
-          <div className="small muted" style={{ marginTop: 6 }}>
-            <div><b>Sent terms:</b> {JSON.stringify(accountDebug.sent)}</div>
-            <div><b>Draft terms (from Shopify):</b> {JSON.stringify(accountDebug.draft)}</div>
+          <div
+            style={{
+              marginTop: 12,
+              padding: "12px 16px",
+              borderRadius: 8,
+              background: "#e7f6ec",
+              border: "1px solid #34a853",
+              color: "#137333",
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+            Order created successfully
           </div>
         )}
       </section>
