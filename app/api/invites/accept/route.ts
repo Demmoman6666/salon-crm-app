@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
     // Guard: no duplicate user
     const existing = await prisma.user.findFirst({
-      where: { companyId: invite.companyId, email: invite.email },
+      where: { email: invite.email },
       select: { id: true },
     });
     if (existing) {

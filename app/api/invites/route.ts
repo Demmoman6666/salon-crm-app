@@ -32,9 +32,9 @@ export async function POST(req: Request) {
     };
     const role = roleMap[roleInput] ?? Role.REP;
 
-    // Reject if a user with this email already exists in this company
+    // Reject if a user with this email already exists anywhere (emails are globally unique)
     const existing = await prisma.user.findFirst({
-      where: { companyId: t.companyId, email },
+      where: { email },
       select: { id: true },
     });
     if (existing) {
