@@ -174,7 +174,7 @@ async function fetchProducts(q: string): Promise<Item[]> {
       const r = await fetch(url, { headers: { Accept: "application/json" } });
       if (!r.ok) continue;
       const j = await r.json();
-      const rows: any[] = Array.isArray(j)
+      const rawRows: any[] = Array.isArray(j)
         ? j
         : Array.isArray(j?.items)
         ? j.items
@@ -183,6 +183,35 @@ async function fetchProducts(q: string): Promise<Item[]> {
         : Array.isArray(j?.variants)
         ? j.variants
         : [];
+
+      // The /products endpoint returns products each with a nested `variants` array.
+      // Flatten to one row per variant so stock/price/sku resolve correctly.
+      const rows: any[] = [];
+      for (const item of rawRows) {
+        if (Array.isArray(item?.variants) && item.variants.length) {
+          for (const v of item.variants) {
+            rows.push({
+              // variant-level fields
+              variantId: v.id,
+              variantTitle: v.title,
+              price: v.price,
+              sku: v.sku,
+              stock: v.stock,
+              available: v.available,
+              barcode: v.barcode,
+              // product-level context
+              productId: item.id,
+              productTitle: item.title,
+              vendor: item.vendor,
+              image: item.image,
+            });
+          }
+        } else {
+          // already a flat variant/row
+          rows.push(item);
+        }
+      }
+
       const items = rows.map(normaliseRow).filter(Boolean) as Item[];
       return items;
     } catch {}
