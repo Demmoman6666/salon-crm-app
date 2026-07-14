@@ -9,7 +9,7 @@ export default function LoginPage() {
   const [show, setShow] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  const [nextUrl, setNextUrl] = useState("/");
+  const [nextUrl, setNextUrl] = useState("/home");
 
   // Read ?next=... without useSearchParams (avoids suspense warning)
   useEffect(() => {
@@ -54,7 +54,12 @@ export default function LoginPage() {
       }}
     >
       <div className="card" style={{ width: 420, maxWidth: "90vw", padding: 20 }}>
-        {/* Login form (no in-card logo) */}
+        <div style={{ textAlign: "center", marginBottom: 20, marginTop: 8 }}>
+          <span style={{ fontSize: "1.9rem", fontWeight: 800, letterSpacing: "-0.03em", color: "#0f172a" }}>
+            Field<span style={{ color: "#2563eb" }}>CRM</span>
+          </span>
+          <p className="small muted" style={{ margin: "6px 0 0" }}>Sign in to your account</p>
+        </div>
         <form method="post" action="/api/login" onSubmit={onSubmit} className="grid" style={{ gap: 12 }}>
           <div>
             <label className="sr-only">Email</label>
