@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth";
 import "./landing.css";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +13,9 @@ export const metadata: Metadata = {
 
 export default async function LandingPage() {
   // No auto-redirect here — a stale/legacy cookie could otherwise bounce visitors
-  // into a login loop. Logged-in users can click "Log in" to enter the app.
+  // into a login loop. We only use auth to decide where the logo points.
+  const me = await getCurrentUser().catch(() => null);
+  const logoHref = me ? "/home" : "/";
 
   const features = [
     { title: "Log calls from the field", body: "Reps capture every visit and call with GPS, outcome, and follow-up — from their phone, in seconds." },
@@ -36,7 +39,7 @@ export default async function LandingPage() {
     <div className="lp">
       <header className="lp-nav">
         <div className="lp-container lp-nav-inner">
-          <span className="lp-wordmark">Field<span>CRM</span></span>
+          <Link href={logoHref} className="lp-wordmark" style={{textDecoration:"none"}}>Field<span>CRM</span></Link>
           <nav className="lp-nav-links">
             <a href="#features">Features</a>
             <a href="#pricing">Pricing</a>
@@ -113,7 +116,7 @@ export default async function LandingPage() {
 
       <footer className="lp-footer">
         <div className="lp-container lp-footer-inner">
-          <span className="lp-wordmark lp-wordmark-sm">Field<span>CRM</span></span>
+          <Link href={logoHref} className="lp-wordmark lp-wordmark-sm" style={{textDecoration:"none"}}>Field<span>CRM</span></Link>
           <p className="lp-footer-tag">Field sales CRM for B2B distributors on Shopify</p>
           <div className="lp-footer-links">
             <a href="#features">Features</a>
