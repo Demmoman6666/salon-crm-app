@@ -100,6 +100,7 @@ function SettingsInner() {
   }
   const [newRep, setNewRep] = useState({ name: "", email: "", phone: "", territory: "" });
   const [repMsg, setRepMsg] = useState<string | null>(null);
+  const [repUpgrade, setRepUpgrade] = useState<{ message: string; upgradeTo: string } | null>(null);
   const [addingRep, setAddingRep] = useState(false);
 
   useEffect(() => {
@@ -201,7 +202,12 @@ function SettingsInner() {
         body: JSON.stringify({ name: u.fullName || u.email, email: u.email, phone: u.phone }),
       });
       const j = await r.json();
+      if (r.status === 402 && j?.code === "REP_LIMIT") {
+        setRepUpgrade({ message: j.error, upgradeTo: j.upgradeTo });
+        return;
+      }
       if (!r.ok) throw new Error(j?.error || "Failed");
+      setRepUpgrade(null);
       setRepMsg(`${u.fullName || u.email} added as a sales rep.`);
       if (tab === "admin") await loadReps();
     } catch (e: any) {
@@ -220,7 +226,12 @@ function SettingsInner() {
         body: JSON.stringify(newRep),
       });
       const j = await r.json();
+      if (r.status === 402 && j?.code === "REP_LIMIT") {
+        setRepUpgrade({ message: j.error, upgradeTo: j.upgradeTo });
+        return;
+      }
       if (!r.ok) throw new Error(j?.error || "Failed");
+      setRepUpgrade(null);
       setNewRep({ name: "", email: "", phone: "", territory: "" });
       setRepMsg("Rep added.");
       await loadReps();
@@ -372,6 +383,15 @@ function SettingsInner() {
                 ))}
               </div>
               {repMsg && <div className="small muted" style={{ marginTop: 8 }}>{repMsg}</div>}
+              {repUpgrade && (
+                <div style={{ marginTop: 12, padding: 16, borderRadius: 10, background: "#eff4ff", border: "1px solid #bfdbfe" }}>
+                  <div style={{ fontWeight: 600, color: "#1e3a8a", marginBottom: 4 }}>Upgrade to add more reps</div>
+                  <div className="small" style={{ color: "#1e40af", marginBottom: 12 }}>{repUpgrade.message}</div>
+                  <a className="primary" href="/upgrade" style={{ display: "inline-block", textDecoration: "none" }}>
+                    Upgrade to {repUpgrade.upgradeTo}
+                  </a>
+                </div>
+              )}
             </section>
           )}
 
@@ -437,6 +457,43 @@ function SettingsInner() {
       {/* ---- Admin ---- */}
       {tab === "tools" && isAdmin && (
         <div className="grid" style={{ gap: 16 }}>
+        <section className="card">
+          <h2 style={{ marginBottom: 4 }}>Shopify Integration</h2>
+          <p className="small muted" style={{ marginBottom: 14 }}>
+            Control how the CRM syncs with your Shopify store.
+          </p>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={autoPush}
+              disabled={autoPushSaving}
+              onChange={(e) => toggleAutoPush(e.target.checked)}
+              style={{ marginTop: 3 }}
+            />
+            <span>
+              <span style={{ fontWeight: 600, display: "block" }}>
+                Auto-push new customers to Shopify
+              </span>
+              <span className="small muted">
+                When on, every customer you create in the CRM is created in Shopify immediately.
+                When off, customers are only pushed to Shopify when you edit them or raise an order
+                — keeping prospects and leads out of your Shopify customer list until they transact.
+              </span>
+            </span>
+          </label>
+        </section>
+
+        <section className="card">
+          <h2 style={{ marginBottom: 4 }}>Brands &amp; Products</h2>
+          <p className="small muted" style={{ marginBottom: 14 }}>
+            Manage which brands appear in call logs and reports.
+          </p>
+          <div className="row" style={{ gap: 10 }}>
+            <a className="btn" href="/settings/global/stocked-brands">Brand Management</a>
+            <a className="btn" href="/settings/global/competitor-brands">Competitor Brands</a>
+          </div>
+        </section>
+
           <section className="card">
             <h2 style={{ marginBottom: 4 }}>Import Shopify Data</h2>
             <ShopifyImport />
@@ -551,43 +608,6 @@ function SettingsInner() {
 
       {tab === "admin" && isAdmin && (
         <div className="grid" style={{ gap: 16 }}>
-        <section className="card">
-          <h2 style={{ marginBottom: 4 }}>Shopify Integration</h2>
-          <p className="small muted" style={{ marginBottom: 14 }}>
-            Control how the CRM syncs with your Shopify store.
-          </p>
-          <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
-            <input
-              type="checkbox"
-              checked={autoPush}
-              disabled={autoPushSaving}
-              onChange={(e) => toggleAutoPush(e.target.checked)}
-              style={{ marginTop: 3 }}
-            />
-            <span>
-              <span style={{ fontWeight: 600, display: "block" }}>
-                Auto-push new customers to Shopify
-              </span>
-              <span className="small muted">
-                When on, every customer you create in the CRM is created in Shopify immediately.
-                When off, customers are only pushed to Shopify when you edit them or raise an order
-                — keeping prospects and leads out of your Shopify customer list until they transact.
-              </span>
-            </span>
-          </label>
-        </section>
-
-        <section className="card">
-          <h2 style={{ marginBottom: 4 }}>Brands &amp; Products</h2>
-          <p className="small muted" style={{ marginBottom: 14 }}>
-            Manage which brands appear in call logs and reports.
-          </p>
-          <div className="row" style={{ gap: 10 }}>
-            <a className="btn" href="/settings/global/stocked-brands">Brand Management</a>
-            <a className="btn" href="/settings/global/competitor-brands">Competitor Brands</a>
-          </div>
-        </section>
-
         <section className="card">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <h2>Users</h2>
