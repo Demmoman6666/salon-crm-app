@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import PricingTiers from "@/components/PricingTiers";
 import "./landing.css";
 
 export const dynamic = "force-dynamic";
@@ -26,14 +27,6 @@ export default async function LandingPage() {
     { title: "One source of truth", body: "Customers, orders, and reps sync from Shopify automatically. No double entry, no stale spreadsheets." },
   ];
 
-  const tiers = [
-    { name: "Starter", forWho: "Up to 3 reps", blurb: "For small distributors getting their field team organised.",
-      features: ["Customers & call logging", "Order building with Shopify sync", "Core reporting", "Up to 3 sales reps"], cta: "Start free trial", featured: false },
-    { name: "Growth", forWho: "Up to 10 reps", blurb: "For growing teams that live in the field.",
-      features: ["Everything in Starter", "Coverage map & territory view", "GAP analysis & rep scorecards", "AI call briefs & profit calculator", "Up to 10 sales reps", "Priority support"], cta: "Start free trial", featured: true },
-    { name: "Pro", forWho: "Unlimited reps", blurb: "For established distributors running at scale.",
-      features: ["Everything in Growth", "Unlimited sales reps", "Advanced reporting", "Dedicated support"], cta: "Talk to us", featured: false },
-  ];
 
   return (
     <div className="lp">
@@ -89,20 +82,7 @@ export default async function LandingPage() {
           <p className="lp-section-eyebrow">Pricing</p>
           <h2 className="lp-section-title">Priced by the size of your team</h2>
           <p className="lp-section-lead">Every plan includes the core CRM. Choose the tier that fits how many reps you run.</p>
-          <div className="lp-tiers">
-            {tiers.map((t) => (
-              <div className={`lp-tier${t.featured ? " lp-tier-featured" : ""}`} key={t.name}>
-                {t.featured && <span className="lp-tier-badge">Most popular</span>}
-                <h3 className="lp-tier-name">{t.name}</h3>
-                <p className="lp-tier-for">{t.forWho}</p>
-                <p className="lp-tier-blurb">{t.blurb}</p>
-                <ul className="lp-tier-features">
-                  {t.features.map((feat) => (<li key={feat}>{feat}</li>))}
-                </ul>
-                <a href="#" className={`lp-btn ${t.featured ? "lp-btn-primary" : "lp-btn-outline"} lp-tier-cta`}>{t.cta}</a>
-              </div>
-            ))}
-          </div>
+          <PricingTiers />
         </div>
       </section>
 
