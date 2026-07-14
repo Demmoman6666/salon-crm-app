@@ -61,11 +61,11 @@
 }
 .lp-hero-title {
   font-size: clamp(38px, 6vw, 60px); line-height: 1.05; font-weight: 800; letter-spacing: -0.03em;
-  margin: 0 0 24px;
+  margin: 0 0 24px; color: #ffffff;
 }
-.lp-accent { color: var(--blue-bright); }
+.lp-accent { color: #60a5fa; }
 .lp-hero-sub {
-  font-size: 18px; line-height: 1.6; color: rgba(255,255,255,0.82); max-width: 620px; margin: 0 0 36px;
+  font-size: 18px; line-height: 1.65; color: rgba(255,255,255,0.90); max-width: 620px; margin: 0 0 36px;
 }
 .lp-hero-cta { display: flex; gap: 14px; flex-wrap: wrap; }
 .lp-hero-note { margin: 22px 0 0; font-size: 14px; color: rgba(255,255,255,0.55); }
@@ -142,7 +142,7 @@
 .lp-cta-band {
   background: linear-gradient(160deg, var(--navy) 0%, var(--navy-2) 100%); color: #fff; padding: 80px 0; text-align: center;
 }
-.lp-cta-inner h2 { font-size: clamp(26px, 4vw, 34px); font-weight: 800; letter-spacing: -0.02em; margin: 0 0 12px; }
+.lp-cta-inner h2 { font-size: clamp(26px, 4vw, 34px); font-weight: 800; letter-spacing: -0.02em; margin: 0 0 12px; color: #ffffff; }
 .lp-cta-inner p { font-size: 17px; color: rgba(255,255,255,0.8); margin: 0 0 30px; }
 
 /* FOOTER */
