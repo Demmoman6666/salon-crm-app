@@ -1,5 +1,6 @@
 // app/api/salesreps/route.ts
 import { requireTenant } from "@/lib/tenant";
+import { canAddRep } from "@/lib/entitlements";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser, isAdmin } from "@/lib/auth";
@@ -25,6 +26,20 @@ export async function POST(req: Request) {
     if (!name || !String(name).trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
+
+    // Enforce plan rep limit
+    const gate = await canAddRep();
+    if (!gate.ok) {
+      return NextResponse.json(
+        {
+          error: `You've reached your plan's limit of ${gate.limit} sales reps. Upgrade to ${gate.upgradeTo} to add more.`,
+          upgradeTo: gate.upgradeTo,
+          code: "REP_LIMIT",
+        },
+        { status: 402 }
+      );
+    }
+
     const rep = await prisma.salesRep.create({
       data: {
         companyId: t.companyId,

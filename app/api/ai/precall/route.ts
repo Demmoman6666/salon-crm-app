@@ -1,4 +1,5 @@
 import { requireTenant } from "@/lib/tenant";
+import { requireFeature, UpgradeRequiredError } from "@/lib/entitlements";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
@@ -8,6 +9,10 @@ export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   const t = await requireTenant();
+  try { await requireFeature("aiBriefs"); } catch (e: any) {
+    if (e instanceof UpgradeRequiredError) return NextResponse.json({ error: e.message, upgradeTo: e.upgradeTo, code: "UPGRADE_REQUIRED" }, { status: 402 });
+    throw e;
+  }
   const me = await getCurrentUser();
   if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 

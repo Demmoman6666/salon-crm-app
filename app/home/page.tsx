@@ -1,12 +1,17 @@
 // app/page.tsx
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { getCompanyName } from "@/lib/tenant";
+import { getEntitlements } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
 
 export default async function Home() {
   const me = await getCurrentUser();
+  // Lock the app when the trial has expired (exempt companies pass through).
+  const ent = await getEntitlements().catch(() => null);
+  if (ent?.trialExpired) redirect("/upgrade");
   const companyName = await getCompanyName();
 
   return (

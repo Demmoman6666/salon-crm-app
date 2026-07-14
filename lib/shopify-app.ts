@@ -180,8 +180,8 @@ export async function registerWebhooks(companyId: string) {
 
 export const PLANS: Record<string, { name: string; amount: number; trialDays: number }> = {
   starter: { name: "Starter", amount: 49, trialDays: 14 },
-  growth: { name: "Growth", amount: 99, trialDays: 14 },
-  pro: { name: "Pro", amount: 199, trialDays: 14 },
+  growth: { name: "Growth", amount: 149, trialDays: 14 },
+  pro: { name: "Pro", amount: 299, trialDays: 14 },
 };
 
 export async function createSubscription(companyId: string, planKey: string): Promise<{ confirmationUrl: string; subscriptionId: string }> {
@@ -209,7 +209,7 @@ export async function createSubscription(companyId: string, planKey: string): Pr
         {
           plan: {
             appRecurringPricingDetails: {
-              price: { amount: plan.amount, currencyCode: "USD" },
+              price: { amount: plan.amount, currencyCode: "GBP" },
               interval: "EVERY_30_DAYS",
             },
           },

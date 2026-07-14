@@ -10,6 +10,8 @@ export type TenantContext = {
   companyName: string;
   plan: string;
   shopDomain: string;
+  isExempt?: boolean;
+  trialEndsAt?: Date | null;
 };
 
 /**
@@ -24,7 +26,7 @@ export async function requireTenant(): Promise<TenantContext> {
     where: { id: me.id },
     select: {
       companyId: true,
-      company: { select: { name: true, plan: true, shopDomain: true, uninstalledAt: true } },
+      company: { select: { name: true, plan: true, shopDomain: true, uninstalledAt: true, isExempt: true, trialEndsAt: true } },
     },
   });
   if (!user?.companyId || !user.company) throw new TenantError("No company for user", 403);
@@ -35,6 +37,8 @@ export async function requireTenant(): Promise<TenantContext> {
     companyName: user.company.name,
     plan: user.company.plan,
     shopDomain: user.company.shopDomain,
+    isExempt: user.company.isExempt,
+    trialEndsAt: user.company.trialEndsAt,
   };
 }
 

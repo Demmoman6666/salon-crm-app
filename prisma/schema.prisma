@@ -28,6 +28,7 @@ model Company {
 
   // Billing (Shopify Billing API)
   plan                String    @default("trial") // trial | starter | growth | pro
+  isExempt            Boolean   @default(false) // internal/owner companies bypass all limits
   billingChargeId     String?
   billingActivatedAt  DateTime?
   trialEndsAt         DateTime?

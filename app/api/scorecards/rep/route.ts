@@ -1,5 +1,6 @@
 // app/api/scorecards/rep/route.ts
 import { requireTenant } from "@/lib/tenant";
+import { requireFeature, UpgradeRequiredError } from "@/lib/entitlements";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
@@ -61,6 +62,10 @@ function exVatForOrder(o: {
 
 export async function GET(req: Request) {
   const t = await requireTenant();
+  try { await requireFeature("repScorecards"); } catch (e: any) {
+    if (e instanceof UpgradeRequiredError) return NextResponse.json({ error: e.message, upgradeTo: e.upgradeTo, code: "UPGRADE_REQUIRED" }, { status: 402 });
+    throw e;
+  }
   const { searchParams } = new URL(req.url);
   const repId = searchParams.get("repId");
   const start = parseStart(searchParams.get("start") || searchParams.get("month"));

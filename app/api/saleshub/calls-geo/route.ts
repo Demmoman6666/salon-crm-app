@@ -1,5 +1,6 @@
 // app/api/saleshub/calls-geo/route.ts
 import { requireTenant } from "@/lib/tenant";
+import { requireFeature, UpgradeRequiredError } from "@/lib/entitlements";
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -15,6 +16,10 @@ function escapeHtml(s: any) {
 
 export async function GET(req: NextRequest) {
   const t = await requireTenant();
+  try { await requireFeature("coverageMap"); } catch (e: any) {
+    if (e instanceof UpgradeRequiredError) return NextResponse.json({ error: e.message, upgradeTo: e.upgradeTo, code: "UPGRADE_REQUIRED" }, { status: 402 });
+    throw e;
+  }
   try {
     const { searchParams } = new URL(req.url);
 
