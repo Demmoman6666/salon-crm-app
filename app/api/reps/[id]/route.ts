@@ -9,7 +9,7 @@ export const runtime = "nodejs";
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const t = await requireTenant();
   try {
-    const rep = await prisma.salesRep.findUnique({ where: { id: params.id } });
+    const rep = await prisma.salesRep.findFirst({ where: { companyId: t.companyId, id: params.id } });
     if (!rep) return NextResponse.json({ error: "Rep not found" }, { status: 404 });
 
     const [totalCustomers, customersByStage, recentCustomers] = await Promise.all([

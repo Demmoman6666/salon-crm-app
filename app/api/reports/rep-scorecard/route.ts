@@ -133,7 +133,7 @@ export async function GET(req: Request) {
     let repNameResolved: string | null = repNameParam;
     if (repId) {
       try {
-        const rep = await prisma.salesRep.findUnique({ where: { id: repId } });
+        const rep = await prisma.salesRep.findFirst({ where: { companyId: t.companyId, id: repId } });
         repNameResolved = rep?.name || repNameResolved;
       } catch {}
     }

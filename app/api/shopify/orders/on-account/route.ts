@@ -34,8 +34,8 @@ export async function POST(req: Request) {
     }
 
     // Look up CRM customer and their payment terms
-    const customer = await prisma.customer.findUnique({
-      where: { id: String(crmCustomerId) },
+    const customer = await prisma.customer.findFirst({
+      where: { companyId: t.companyId, id: String(crmCustomerId) },
       select: {
         shopifyCustomerId: true,
         customerEmailAddress: true,

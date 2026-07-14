@@ -17,7 +17,7 @@ export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "ANTHROPIC_API_KEY not configured" }, { status: 500 });
 
-  const rep = await prisma.salesRep.findUnique({ where: { id: repId } });
+  const rep = await prisma.salesRep.findFirst({ where: { companyId: t.companyId, id: repId } });
   if (!rep) return NextResponse.json({ error: "Rep not found" }, { status: 404 });
 
   const thirtyDaysAgo = new Date();

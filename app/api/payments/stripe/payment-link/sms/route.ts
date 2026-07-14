@@ -78,8 +78,8 @@ export async function POST(req: Request) {
     // Pull CRM customer (to get phone + shopify id) if not provided explicitly
     let crm: { id: string; tel?: string | null; shopifyCustomerId?: string | null } | null = null;
     if (customerId) {
-      const c = await prisma.customer.findUnique({
-        where: { id: String(customerId) },
+      const c = await prisma.customer.findFirst({
+        where: { companyId: t.companyId, id: String(customerId) },
         select: { id: true, customerTelephone: true, shopifyCustomerId: true },
       });
       crm = c ? { id: c.id, tel: c.customerTelephone, shopifyCustomerId: c.shopifyCustomerId } : null;

@@ -9,13 +9,14 @@ import { prisma } from "@/lib/prisma";
  *
  * Returns the rep name or null if no match.
  */
-export async function resolveRepNameFromTags(tags: string[] | null | undefined): Promise<string | null> {
+export async function resolveRepNameFromTags(tags: string[] | null | undefined, companyId: string): Promise<string | null> {
   const norm = (s: string) => s.trim().toLowerCase();
   const set = new Set((tags ?? []).map(norm).filter(Boolean));
   if (set.size === 0) return null;
 
-  // 1) Rule-based mapping
+  // 1) Rule-based mapping (scoped to company)
   const rules = await prisma.salesRepTagRule.findMany({
+    where: { companyId },
     select: { tag: true, salesRep: { select: { name: true } } },
   });
   for (const r of rules) {
@@ -24,8 +25,8 @@ export async function resolveRepNameFromTags(tags: string[] | null | undefined):
     }
   }
 
-  // 2) Fallback: a tag equals the rep's name
-  const reps = await prisma.salesRep.findMany({ select: { name: true } });
+  // 2) Fallback: a tag equals the rep's name (scoped to company)
+  const reps = await prisma.salesRep.findMany({ where: { companyId }, select: { name: true } });
   for (const rep of reps) {
     if (rep.name && set.has(norm(rep.name))) {
       return rep.name;

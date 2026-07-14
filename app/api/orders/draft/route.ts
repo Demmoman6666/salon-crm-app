@@ -48,14 +48,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "At least one line item is required" }, { status: 400 });
     }
 
-    const crm = await prisma.customer.findUnique({ where: { id: customerId } });
+    const crm = await prisma.customer.findFirst({ where: { companyId: t.companyId, id: customerId } });
     if (!crm) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
 
     // Ensure customer exists in Shopify
     let shopifyCustomerId = crm.shopifyCustomerId || null;
     if (!shopifyCustomerId) {
       await pushCustomerToShopifyById(t.companyId, crm.id);
-      const updated = await prisma.customer.findUnique({ where: { id: crm.id } });
+      const updated = await prisma.customer.findFirst({ where: { companyId: t.companyId, id: crm.id } });
       shopifyCustomerId = updated?.shopifyCustomerId || null;
     }
     if (!shopifyCustomerId) {

@@ -96,8 +96,8 @@ export async function POST(req: Request) {
     }
 
     // CRM customer (for email + Shopify linkage)
-    const crm = await prisma.customer.findUnique({
-      where: { id: customerId },
+    const crm = await prisma.customer.findFirst({
+      where: { companyId: t.companyId, id: customerId },
       select: {
         id: true,
         salonName: true,

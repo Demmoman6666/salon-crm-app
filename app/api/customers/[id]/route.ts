@@ -45,7 +45,7 @@ const normEmail = (v: unknown) => {
 export async function GET(_req: Request, { params }: { params: { id: string } }) {
   const t = await requireTenant();
   const customer = await prisma.customer.findUnique({
-    where: { id: params.id },
+    where: { companyId: t.companyId, id: params.id },
     include: {
       visits:   { orderBy: { date: "desc" } },
       notesLog: { orderBy: { createdAt: "desc" } },
@@ -60,7 +60,7 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const t = await requireTenant();
   try {
-    const existing = await prisma.customer.findUnique({ where: { id: params.id } });
+    const existing = await prisma.customer.findFirst({ where: { companyId: t.companyId, id: params.id } });
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
     const body: any = await readBody(req);
@@ -97,7 +97,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     };
 
     const updated = await prisma.customer.update({
-      where: { id: params.id },
+      where: { companyId: t.companyId, id: params.id },
       data,
     });
 

@@ -132,8 +132,8 @@ export async function POST(req: Request) {
     }
 
     // Ensure customer exists
-    const customer = await prisma.customer.findUnique({
-      where: { id: payload.customerId },
+    const customer = await prisma.customer.findFirst({
+      where: { companyId: t.companyId, id: payload.customerId },
       select: { id: true },
     });
     if (!customer) {

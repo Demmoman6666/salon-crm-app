@@ -20,8 +20,8 @@ export async function GET(req: Request) {
 
   try {
     // Fetch customer with full history
-    const customer = await prisma.customer.findUnique({
-      where: { id: customerId },
+    const customer = await prisma.customer.findFirst({
+      where: { companyId: t.companyId, id: customerId },
       include: {
         callLogs: {
           orderBy: { createdAt: "desc" },

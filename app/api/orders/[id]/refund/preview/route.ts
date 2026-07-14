@@ -20,7 +20,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       return NextResponse.json({ amount: 0 }, { status: 200 });
     }
 
-    const crmOrder = await prisma.order.findUnique({ where: { id: orderId } });
+    const crmOrder = await prisma.order.findFirst({ where: { companyId: t.companyId, id: orderId } });
     if (!crmOrder?.shopifyOrderId) {
       return NextResponse.json({ error: "Order not linked to Shopify" }, { status: 400 });
     }

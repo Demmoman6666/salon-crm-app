@@ -72,7 +72,7 @@ export async function GET(req: Request) {
   }
 
   // canonical rep (needed for legacy-name fallback too)
-  const rep = await prisma.salesRep.findUnique({ where: { id: repId } });
+  const rep = await prisma.salesRep.findFirst({ where: { companyId: t.companyId, id: repId } });
   if (!rep) return NextResponse.json({ error: "Rep not found" }, { status: 404 });
 
   // current window [start, end]

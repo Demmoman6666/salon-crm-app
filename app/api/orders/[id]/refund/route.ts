@@ -104,8 +104,8 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     }
 
     // Load CRM order + lines
-    const crmOrder = await prisma.order.findUnique({
-      where: { id: orderId },
+    const crmOrder = await prisma.order.findFirst({
+      where: { companyId: t.companyId, id: orderId },
       include: { lineItems: true, customer: true },
     });
     if (!crmOrder) return NextResponse.json({ error: "Order not found" }, { status: 404 });

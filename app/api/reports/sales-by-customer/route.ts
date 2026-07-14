@@ -91,7 +91,7 @@ export async function GET(req: Request) {
     // Resolve canonical rep name when an id is provided (keeps legacy staff filters working)
     let repNameForFilter: string | null = repNameParam;
     if (repId) {
-      const rep = await prisma.salesRep.findUnique({ where: { id: repId } });
+      const rep = await prisma.salesRep.findFirst({ where: { companyId: t.companyId, id: repId } });
       repNameForFilter = rep?.name || repNameForFilter;
     }
 

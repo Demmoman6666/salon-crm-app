@@ -149,8 +149,8 @@ export async function POST(req: Request) {
     let savedPaymentTermsDueInDays: number | null = null;
 
     if (crmCustomerId) {
-      const c = await prisma.customer.findUnique({
-        where: { id: String(crmCustomerId) },
+      const c = await prisma.customer.findFirst({
+        where: { companyId: t.companyId, id: String(crmCustomerId) },
         select: {
           shopifyCustomerId: true,
           customerEmailAddress: true,

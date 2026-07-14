@@ -15,8 +15,8 @@ export async function GET(_: Request, { params }: Params) {
   }
 
   try {
-    const c = await prisma.customer.findUnique({
-      where: { id },
+    const c = await prisma.customer.findFirst({
+      where: { companyId: t.companyId, id },
       select: {
         paymentDueLater: true,
         paymentTermsName: true,

@@ -108,8 +108,9 @@ export default async function EducationRequestReviewPage({
 }: {
   params: { id: string };
 }) {
-  const req = await prisma.educationRequest.findUnique({
-    where: { id: params.id },
+  const t = await requireTenant();
+  const req = await prisma.educationRequest.findFirst({
+    where: { companyId: t.companyId, id: params.id },
     select: {
       id: true,
       createdAt: true,

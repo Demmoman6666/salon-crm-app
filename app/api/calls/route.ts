@@ -258,8 +258,8 @@ export async function POST(req: NextRequest) {
     // Lookup display name for existing customer (nice for calendar)
     let displayCustomerName: string | null = leadCustomerName;
     if (isExisting && customerId) {
-      const cust = await prisma.customer.findUnique({
-        where: { id: customerId },
+      const cust = await prisma.customer.findFirst({
+        where: { companyId: t.companyId, id: customerId },
         select: { salonName: true, customerName: true },
       });
       displayCustomerName = cust?.salonName || cust?.customerName || null;
@@ -328,13 +328,13 @@ export async function POST(req: NextRequest) {
       // Auto-advance pipeline stage based on call outcome (forward-only)
       try {
         const cust = await prisma.customer.findUnique({
-          where: { id: customerId },
+          where: { companyId: t.companyId, id: customerId },
           select: { stage: true },
         });
         const newStage = resolveStageAfterOutcome(cust?.stage as any, outcome);
         if (newStage) {
           await prisma.customer.update({
-            where: { id: customerId },
+            where: { companyId: t.companyId, id: customerId },
             data: { stage: newStage as any },
           });
         }
@@ -351,7 +351,7 @@ export async function POST(req: NextRequest) {
     if (isEduOutcome && customerId) {
       try {
         const cust = await prisma.customer.findUnique({
-          where: { id: customerId },
+          where: { companyId: t.companyId, id: customerId },
           select: {
             salonName: true, customerName: true, customerTelephone: true,
             customerEmailAddress: true, addressLine1: true, addressLine2: true,

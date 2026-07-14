@@ -11,8 +11,8 @@ const DAY_SET = new Set(["MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY"]);
 
 export async function GET(_: Request, { params }: { params: { id: string } }) {
   const t = await requireTenant();
-  const c = await prisma.customer.findUnique({
-    where: { id: params.id },
+  const c = await prisma.customer.findFirst({
+    where: { companyId: t.companyId, id: params.id },
     select: { id: true, routePlanEnabled: true, routeWeeks: true, routeDays: true },
   });
   if (!c) return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -32,7 +32,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   const d = [...new Set(daysRaw.map(String).map(s => s.toUpperCase()).filter(s => DAY_SET.has(s)))];
 
   const updated = await prisma.customer.update({
-    where: { id: params.id },
+    where: { companyId: t.companyId, id: params.id },
     data: {
       routePlanEnabled: enabled,
       routeWeeks: w,

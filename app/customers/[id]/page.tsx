@@ -116,10 +116,9 @@ type PageProps = { params: { id: string }; searchParams?: Record<string, string|
 export default async function CustomerPage({ params, searchParams }: PageProps) {
   const tab = (Array.isArray(searchParams?.tab) ? searchParams?.tab[0] : searchParams?.tab) || "overview";
 
-  const customer = await prisma.customer.findUnique({ where: { id: params.id } });
-  if (!customer) return notFound();
   const t = await requireTenant();
-  if ((customer as any).companyId && (customer as any).companyId !== t.companyId) return notFound();
+  const customer = await prisma.customer.findFirst({ where: { companyId: t.companyId, id: params.id } });
+  if (!customer) return notFound();
 
   const orders = await prisma.order.findMany({
     where: { customerId: customer.id },

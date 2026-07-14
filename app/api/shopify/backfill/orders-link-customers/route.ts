@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
       // Find the CRM customer
       const crmCust = await prisma.customer.findFirst({
-        where: { shopifyCustomerId: sCustId },
+        where: { companyId: t.companyId, shopifyCustomerId: sCustId },
         select: { id: true },
       });
 

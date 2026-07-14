@@ -31,11 +31,11 @@ function minsFrom(log: { durationMinutes?: number | null; startTime?: Date | nul
   return null;
 }
 
-async function getCallWithFallback(id: string) {
+async function getCallWithFallback(id: string, companyId: string) {
   // Try full fetch first (includes potential geo fields)
   try {
-    const call = await prisma.callLog.findUnique({
-      where: { id },
+    const call = await prisma.callLog.findFirst({
+      where: { companyId, id },
       include: {
         customer: { select: { salonName: true, customerName: true } },
       },
@@ -43,8 +43,8 @@ async function getCallWithFallback(id: string) {
     return { call, degraded: false };
   } catch (e) {
     // Likely columns don’t exist yet. Fetch a safe subset that’s guaranteed to exist.
-    const call = await prisma.callLog.findUnique({
-      where: { id },
+    const call = await prisma.callLog.findFirst({
+      where: { companyId, id },
       select: {
         id: true,
         createdAt: true,
@@ -72,7 +72,7 @@ async function getCallWithFallback(id: string) {
 
 export default async function CallLogViewPage({ params }: { params: { id: string } }) {
   const t = await requireTenant();
-  const { call, degraded } = await getCallWithFallback(params.id);
+  const { call, degraded } = await getCallWithFallback(params.id, t.companyId);
 
   if (!call) {
     return (

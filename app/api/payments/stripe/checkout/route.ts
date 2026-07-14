@@ -183,8 +183,8 @@ export async function POST(req: Request) {
       }
     }
 
-    const crm = await prisma.customer.findUnique({
-      where: { id: customerId },
+    const crm = await prisma.customer.findFirst({
+      where: { companyId: t.companyId, id: customerId },
       select: { id: true, salonName: true, customerName: true, customerEmailAddress: true, shopifyCustomerId: true },
     });
     if (!crm) return NextResponse.json({ error: "Customer not found" }, { status: 404 });
