@@ -204,7 +204,6 @@ export default async function CustomerPage({ params, searchParams }: PageProps) 
             <Link className="primary" href={"/calls/new?customerId=" + customer.id}>Log Call</Link>
             <Link className="btn" href={"/orders/new?customerId=" + customer.id}>Create Order</Link>
             <Link className="btn" href={"/customers/" + customer.id + "?tab=ai"} style={{ background: "var(--pink-light)", color: "var(--pink-dark)", border: "1px solid var(--pink)" }}>AI Brief</Link>
-            <Link className="btn" href={"/education/requests/new?customerId=" + customer.id + "&salonName=" + encodeURIComponent((c.salonName || ""))}>Request Education</Link>
           </div>
         </div>
 
