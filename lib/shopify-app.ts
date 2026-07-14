@@ -110,12 +110,42 @@ export function verifyWebhookHmac(rawBody: string, hmacHeader: string | null): b
 export async function getCompanyShopifyCreds(companyId: string): Promise<{ shopDomain: string; token: string }> {
   const c = await prisma.company.findUnique({
     where: { id: companyId },
-    select: { shopDomain: true, shopifyAccessToken: true },
+    select: {
+      shopDomain: true,
+      shopifyAccessToken: true,
+      shopifyRefreshToken: true,
+      shopifyTokenExpiresAt: true,
+    },
   });
   if (!c?.shopDomain || !c.shopifyAccessToken) {
     throw new Error("Shopify is not connected for this company");
   }
-  return { shopDomain: c.shopDomain, token: c.shopifyAccessToken };
+
+  let token = c.shopifyAccessToken;
+
+  // Refresh if the token is expiring/expired and we have a refresh token (5-min margin).
+  const expiresAt = c.shopifyTokenExpiresAt ? new Date(c.shopifyTokenExpiresAt).getTime() : null;
+  const needsRefresh = expiresAt !== null && expiresAt - Date.now() < 5 * 60 * 1000;
+
+  if (needsRefresh && c.shopifyRefreshToken) {
+    try {
+      const refreshed = await refreshAccessToken(c.shopDomain, c.shopifyRefreshToken);
+      token = refreshed.access_token;
+      const newExpiry = refreshed.expires_in ? new Date(Date.now() + refreshed.expires_in * 1000) : null;
+      await prisma.company.update({
+        where: { id: companyId },
+        data: {
+          shopifyAccessToken: refreshed.access_token,
+          shopifyRefreshToken: refreshed.refresh_token ?? c.shopifyRefreshToken,
+          shopifyTokenExpiresAt: newExpiry,
+        },
+      });
+    } catch (e) {
+      console.error("Shopify token refresh failed (billing/app):", (e as any)?.message || e);
+    }
+  }
+
+  return { shopDomain: c.shopDomain, token };
 }
 
 export async function shopifyRest(companyId: string, path: string, init?: RequestInit) {
