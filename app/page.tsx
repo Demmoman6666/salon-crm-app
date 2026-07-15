@@ -56,7 +56,7 @@ export default async function LandingPage() {
             purpose-built for B2B distributors.
           </p>
           <div className="lp-hero-cta">
-            <a href="#pricing" className="lp-btn lp-btn-primary">Start free trial</a>
+            <a href="/install" className="lp-btn lp-btn-primary">Start free trial</a>
             <Link href="/login" className="lp-btn lp-btn-ghost">Log in</Link>
           </div>
           <p className="lp-hero-note">14-day free trial · Installs from your Shopify admin</p>
@@ -96,7 +96,7 @@ export default async function LandingPage() {
         <div className="lp-container lp-cta-inner">
           <h2>Ready to get your field team organised?</h2>
           <p>Install FieldCRM from your Shopify admin and import your customers in minutes.</p>
-          <a href="#pricing" className="lp-btn lp-btn-primary lp-btn-lg">Start your free trial</a>
+          <a href="/install" className="lp-btn lp-btn-primary lp-btn-lg">Start your free trial</a>
         </div>
       </section>
 

@@ -117,7 +117,7 @@ export default function PricingTiers() {
                 ))}
               </ul>
               <a
-                href="#"
+                href="/install"
                 className={`lp-btn ${t.featured ? "lp-btn-primary" : "lp-btn-outline"} lp-tier-cta`}
               >
                 {t.cta}

@@ -53,6 +53,7 @@ async function verifyToken(token: string | undefined | null): Promise<{ userId: 
  */
 const PUBLIC_PATHS = [
   "/",
+  "/install",
   "/login",
   "/api/login",
   "/api/auth/login",
