@@ -7,7 +7,7 @@ import SettingsMenu from "@/components/SettingsMenu";
 import ThemeToggle from "@/components/ThemeToggle";
 
 // Routes that render full-bleed with NO app header/footer (public marketing/auth pages).
-const BARE_ROUTES = ["/", "/login", "/forgot-password", "/reset-password", "/accept-invite"];
+const BARE_ROUTES = ["/", "/install", "/login", "/forgot-password", "/reset-password", "/accept-invite"];
 
 export default function AppChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname() || "/";

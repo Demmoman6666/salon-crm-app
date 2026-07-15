@@ -45,9 +45,9 @@ export default function InstallPage() {
         </div>
       </header>
 
-      <section className="lp-hero" style={{ minHeight: "80vh", display: "flex", alignItems: "center" }}>
+      <section className="lp-hero" style={{ minHeight: "80vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div className="lp-grid-bg" aria-hidden />
-        <div className="lp-container" style={{ position: "relative", zIndex: 2, maxWidth: 520 }}>
+        <div className="lp-container" style={{ position: "relative", zIndex: 2, maxWidth: 560, textAlign: "center", margin: "0 auto" }}>
           <p className="lp-eyebrow">Start your 14-day free trial</p>
           <h1 className="lp-hero-title" style={{ fontSize: "clamp(30px, 5vw, 44px)" }}>
             Connect your Shopify store
@@ -57,7 +57,7 @@ export default function InstallPage() {
             to install FieldCRM. No card required to start.
           </p>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 440 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, maxWidth: 440, margin: "0 auto", textAlign: "left" }}>
             <input
               value={shop}
               onChange={(e) => setShop(e.target.value)}
