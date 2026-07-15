@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
 import PricingTiers from "@/components/PricingTiers";
 import PlanComparison from "@/components/PlanComparison";
 import "./landing.css";
@@ -14,10 +13,9 @@ export const metadata: Metadata = {
 };
 
 export default async function LandingPage() {
-  // No auto-redirect here — a stale/legacy cookie could otherwise bounce visitors
-  // into a login loop. We only use auth to decide where the logo points.
-  const me = await getCurrentUser().catch(() => null);
-  const logoHref = me ? "/home" : "/";
+  // Logo always points to the landing root — no auth check (a stale cookie could
+  // otherwise send it to /home and bounce the visitor to login).
+  const logoHref = "/";
 
   const features = [
     { title: "Log calls from the field", body: "Reps capture every visit and call with GPS, outcome, and follow-up — from their phone, in seconds." },
