@@ -42,7 +42,7 @@ export default function AcceptInvitePage() {
       });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "Failed to set password");
-      window.location.href = "/"; // logged in, go to dashboard
+      window.location.href = "/home"; // logged in, go to dashboard
     } catch (e: any) {
       setError(e.message);
       setSubmitting(false);

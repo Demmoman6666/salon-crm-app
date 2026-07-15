@@ -64,7 +64,7 @@ export async function GET(req: Request) {
     console.error("[install] webhook registration failed:", e);
   }
 
-  const dest = company.onboardedAt ? "/" : `/onboarding?companyId=${company.id}`;
+  const dest = company.onboardedAt ? "/home" : `/onboarding?companyId=${company.id}`;
   const res = NextResponse.redirect(new URL(dest, url.origin));
   res.cookies.delete("shopify_oauth_state");
   return res;

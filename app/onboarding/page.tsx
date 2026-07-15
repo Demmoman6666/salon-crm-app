@@ -168,10 +168,10 @@ export default function OnboardingPage() {
             </p>
             <ShopifyImport />
             <div style={{ display: "flex", gap: 8, marginTop: 20, paddingTop: 16, borderTop: "1px solid var(--border)" }}>
-              <button className="btn" style={{ flex: 1 }} onClick={() => (window.location.href = "/")}>
+              <button className="btn" style={{ flex: 1 }} onClick={() => (window.location.href = "/home")}>
                 Skip for now
               </button>
-              <button className="primary" style={{ flex: 1 }} onClick={() => (window.location.href = "/")}>
+              <button className="primary" style={{ flex: 1 }} onClick={() => (window.location.href = "/home")}>
                 Go to dashboard
               </button>
             </div>

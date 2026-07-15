@@ -30,7 +30,7 @@ export default function NewStockedBrandPage() {
         const j = await res.json().catch(() => ({}));
         throw new Error(j?.error || "Failed to create brand");
       }
-      router.push("/");
+      router.push("/home");
     } catch (err: any) {
       setError(err?.message || "Failed to create brand");
     } finally {

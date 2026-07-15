@@ -373,7 +373,7 @@ export default function NewCallPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error((json as any)?.error || "Failed to save call");
       if ((json as any).redirectTo) window.location.href = (json as any).redirectTo;
-      else window.location.href = "/";
+      else window.location.href = "/home";
     } catch (err: any) {
       setError(err?.message || "Failed to save call");
     } finally {
