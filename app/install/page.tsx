@@ -65,8 +65,8 @@ export default function InstallPage() {
               placeholder="your-store.myshopify.com"
               autoFocus
               style={{
-                padding: "14px 16px", borderRadius: 10, border: "1px solid rgba(255,255,255,0.25)",
-                background: "rgba(255,255,255,0.08)", color: "#fff", fontSize: 16, outline: "none",
+                padding: "14px 16px", borderRadius: 10, border: "1px solid #cbd5e1",
+                background: "#ffffff", color: "#0f172a", fontSize: 16, outline: "none",
               }}
             />
             {err && <div style={{ color: "#fca5a5", fontSize: 14 }}>{err}</div>}
